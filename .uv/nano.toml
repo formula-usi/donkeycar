@@ -1,0 +1,24 @@
+# UV configuration for Jetson Nano
+[tool.uv]
+python = "3.11"
+
+# Jetson Nano specific settings
+[tool.uv.pip]
+# NVIDIA JetPack compatibility
+index-url = "https://pypi.org/simple"
+extra-index-url = [
+    "https://developer.download.nvidia.com/compute/redist"
+]
+
+# Environment variables for Jetson Nano
+[tool.uv.env]
+PLATFORM = "nano"
+ARCHITECTURE = "aarch64"
+CUDA_HOME = "/usr/local/cuda"
+LD_LIBRARY_PATH = "/usr/local/cuda/lib64"
+
+# Override dependencies for Nano-specific versions
+[tool.uv.override-dependencies]
+numpy = "numpy==1.23.*"
+matplotlib = "matplotlib==3.7.*"
+pandas = "pandas==2.0.*"

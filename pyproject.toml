@@ -1,6 +1,122 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "donkeycar"
+dynamic = ["version"]
+description = "Self driving library for python."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Will Roscoe"},
+    {name = "Adam Conway"},
+    {name = "Tawn Kramer"},
+]
+keywords = ["selfdriving", "cars", "donkeycar", "diyrobocars"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+]
 
+# Core dependencies that work across all platforms
+dependencies = [
+    "numpy",
+    "pillow",
+    "docopt",
+    "tornado",
+    "requests",
+    "PrettyTable",
+    "paho-mqtt",
+    "simple_pid",
+    "progress",
+    "pyfiglet",
+    "psutil",
+    "pynmea2",
+    "pyserial",
+    "utm",
+    "pandas",
+    "pyyaml",
+    "tensorflow-metal>=1.2.0",
+    "gym-donkeycar",
+]
 
+[project.urls]
+Homepage = "https://github.com/autorope/donkeycar"
+Repository = "https://github.com/autorope/donkeycar"
+Issues = "https://github.com/autorope/donkeycar/issues"
+
+[project.scripts]
+donkey = "donkeycar.management.base:execute_from_command_line"
+
+[project.optional-dependencies]
+# Development tools (cross-platform)
+dev = [
+    "pytest",
+    "pytest-cov",
+    "responses",
+    "mypy",
+    "black",
+    "isort",
+    "flake8",
+]
+
+# PyTorch (cross-platform)
+torch = [
+    "torch==2.1.*",
+    "pytorch-lightning",
+    "torchvision", 
+    "torchaudio",
+    "fastai",
+]
+
+# macOS specific dependencies
+macos = [
+    "tensorflow==2.15.*",
+    "matplotlib",
+    "kivy",
+    "pandas",
+    "plotly",
+    "albumentations",
+    "opencv-python",
+]
+
+# PC (Linux/Windows) specific dependencies  
+pc = [
+    "tensorflow==2.15.*",
+    "matplotlib",
+    "kivy",
+    "pandas", 
+    "plotly",
+    "albumentations",
+    "opencv-python",
+]
+
+[tool.setuptools]
+packages = ["donkeycar"]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "donkeycar.__version__"}
+
+[tool.setuptools.package-data]
+"*" = ["*.html", "*.ini", "*.txt", "*.kv"]
+
+# UV-specific configuration
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+    "pytest-cov", 
+    "responses",
+    "mypy",
+    "black",
+    "isort",
+    "flake8",
+]
+
+[tool.uv.sources]
+gym-donkeycar = { path = "gym-donkeycar", editable = true }

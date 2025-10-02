@@ -27,3 +27,7 @@ htmlcov/
 # PyTorch
 lightning_logs
 tb_logs
+
+uv.lock
+.venv/
+mysim/data/*

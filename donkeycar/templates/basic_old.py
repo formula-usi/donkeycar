@@ -21,7 +21,7 @@ from donkeycar.parts.controller import LocalWebController, RCReceiver
 from donkeycar.parts.actuator import PCA9685, PWMSteering, PWMThrottle
 from donkeycar.pipeline.augmentations import ImageAugmentation
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 logging.basicConfig(level=logging.INFO)
 
 
@@ -113,8 +113,7 @@ def drive(cfg, model_path=None, model_type=None):
         car.add(rc_throttle, outputs=['user/throttle', 'user/throttle_on'])
         car.add(rc_wiper, outputs=['user/wiper', 'user/wiper_on'])
         ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT,
-                                 mode=cfg.WEB_INIT_MODE,
-                                 cfg = cfg)
+                                 mode=cfg.WEB_INIT_MODE)
         # web controller sets user mode, its angle, throttle are not used.
         car.add(ctr, inputs=['cam/image_array'],
                 outputs=['webcontroller/angle', 'webcontroller/throttle',
@@ -132,8 +131,7 @@ def drive(cfg, model_path=None, model_type=None):
                 ctr.js = netwkJs
         else:
             ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT,
-                                     mode=cfg.WEB_INIT_MODE,
-                                     cfg = cfg)
+                                     mode=cfg.WEB_INIT_MODE)
         car.add(ctr,
                 inputs=['cam/image_array'],
                 outputs=['user/angle', 'user/throttle', 'user/mode',

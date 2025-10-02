@@ -1,0 +1,3 @@
+[submodule "gym-donkeycar"]
+	path = gym-donkeycar
+	url = https://github.com/tawnkramer/gym-donkeycar

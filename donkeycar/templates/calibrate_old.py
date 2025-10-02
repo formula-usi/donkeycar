@@ -39,7 +39,7 @@ def drive(cfg ):
     #Initialize car
     V = dk.vehicle.Vehicle()
 
-    ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT, cfg = cfg)
+    ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT)
     V.add(ctr,
           inputs=['cam/image_array', 'tub/num_records'],
           outputs=['angle', 'throttle', 'user/mode', 'recording'],

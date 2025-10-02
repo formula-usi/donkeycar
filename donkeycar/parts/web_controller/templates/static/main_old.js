@@ -35,7 +35,7 @@ var driveHandler = new function() {
             "w4": false,
             "w5": false,
         },
-        'custom_values': {
+            'custom_values': {
             'speed': 0,
             'battery_voltage': 0,
             'temperature': 0,
@@ -57,6 +57,7 @@ var driveHandler = new function() {
     var socket
 
     this.load = function() {
+
       // Initialize state with server-side values if available
       if (window.serverState) {
         state.circuit = window.serverState.circuit;
@@ -85,12 +86,9 @@ var driveHandler = new function() {
         $('#max_throttle_container').css('display', 'none');
         $('#steer_limited_controls').css('display', 'none');
       }
-      
+
       driveURL = '/drive'
       socket = new WebSocket('ws://' + location.host + '/wsDrive');
-      
-      // Expose socket globally for custom extensions
-      window.donkeySocket = socket;
 
       setBindings()
 
@@ -160,6 +158,7 @@ var driveHandler = new function() {
       // if there were any changes then redraw the UI.
       //
       socket.onmessage = function (event) {
+        console.log(event.data);
         const data = JSON.parse(event.data);
         if(updateState(state, data)) {
             updateUI();
@@ -222,11 +221,6 @@ var driveHandler = new function() {
 
       $('#brake_button').click(function() {
         toggleBrake();
-      });
-
-      $('#ai_throttle_range').on('input', function() {
-        state.aiThrottleMul = ($(this).val() / 100).toFixed(2);
-        postDrive(['ai_throttle_update']);
       });
 
       $('input[type=radio][name=controlMode]').change(function() {
@@ -295,57 +289,9 @@ var driveHandler = new function() {
     }
 
     var updateUI = function() {
-
       $("#throttleInput").val(state.tele.user.throttle);
       $("#angleInput").val(state.tele.user.angle);
       $('#mode_select').val(state.driveMode);
-      $('#circuit_display').text(state.circuit);
-      
-      // Update circuit image
-      var circuitImageElement = $('#circuit_image');
-      
-      // Check if we have blob data for the circuit icon
-      if (state.circuit_icon) {
-        // Use blob data - convert base64 to data URL if needed
-        var imageSrc;
-        if (state.circuit_icon.startsWith('data:')) {
-          // Already a data URL
-          imageSrc = state.circuit_icon;
-        } else {
-          // Assume it's base64 data, convert to data URL
-          imageSrc = 'data:image/png;base64,' + state.circuit_icon;
-        }
-        circuitImageElement.attr('src', imageSrc);
-        circuitImageElement.attr('alt', state.circuit + ' Circuit');
-        // Remove error handler since we're using blob data
-        circuitImageElement.off('error');
-      } else {
-        // Fall back to file-based approach
-        var circuitImagePath = '/static/images/' + state.circuit + '_circuit.png';
-        circuitImageElement.attr('src', circuitImagePath);
-        circuitImageElement.attr('alt', state.circuit + ' Circuit');
-        
-        // Add error handling - fallback to default image if circuit-specific image doesn't exist
-        circuitImageElement.off('error').on('error', function() {
-          $(this).attr('src', '/static/images/default_circuit.png');
-          $(this).attr('alt', 'Default Circuit');
-        });
-      }
-      
-      // Update surface display with color coding
-      var surfaceElement = $('#surface_display');
-      surfaceElement.text(state.surface);
-      
-      // Set color based on surface type
-      var surfaceColor = '#337ab7'; // default blue
-      if (state.surface.toLowerCase() === 'dry') {
-        surfaceColor = '#ff8c00'; // orange
-      } else if (state.surface.toLowerCase() === 'wet') {
-        surfaceColor = '#28a745'; // green
-      } else if (state.surface.toLowerCase() === 'frozen') {
-        surfaceColor = '#87ceeb'; // light blue
-      }
-      surfaceElement.css('color', surfaceColor);
 
       var throttlePercent = Math.round(Math.abs(state.tele.user.throttle) * 100) + '%';
       var steeringPercent = Math.round(Math.abs(state.tele.user.angle) * 100) + '%';
@@ -440,44 +386,6 @@ var driveHandler = new function() {
       }
 
       //drawLine(state.tele.user.angle, state.tele.user.throttle)
-      
-      // Update custom text display
-      if (state.text_content !== undefined) {
-        const textDisplay = document.getElementById('custom_text_display');
-        if (textDisplay) {
-          textDisplay.value = state.text_content;
-          textDisplay.style.color = state.text_content ? '#333' : '#999';
-        }
-      }
-      
-      // Update custom values display
-      if (state.custom_values !== undefined) {
-        // Update speed display
-        if (state.custom_values.speed !== undefined) {
-          const speedDisplay = document.getElementById('speed_display');
-          if (speedDisplay) {
-            speedDisplay.textContent = state.custom_values.speed.toFixed(1);
-          }
-        }
-        
-        // Update battery display with color coding
-        if (state.custom_values.battery_voltage !== undefined) {
-          const batteryDisplay = document.getElementById('battery_display');
-          if (batteryDisplay) {
-            const voltage = state.custom_values.battery_voltage;
-            batteryDisplay.textContent = voltage.toFixed(1) + 'V';
-            
-            // Color coding for battery level
-            if (voltage > 12.0) {
-              batteryDisplay.style.color = '#5cb85c'; // Green - good
-            } else if (voltage > 11.0) {
-              batteryDisplay.style.color = '#f0ad4e'; // Orange - warning
-            } else {
-              batteryDisplay.style.color = '#d9534f'; // Red - low
-            }
-          }
-        }
-      }
     };
 
     const ALL_POST_FIELDS = ['angle', 'throttle', 'drive_mode', 'recording', 'buttons'];
@@ -500,9 +408,6 @@ var driveHandler = new function() {
                 case 'drive_mode': data['drive_mode'] = state.driveMode; break;
                 case 'recording': data['recording'] = state.recording; break;
                 case 'buttons': data['buttons'] = state.buttons; break;
-                case 'ai_throttle_update': data['ai_throttle_update'] = state.aiThrottleMul; break;
-                case 'circuit': data['circuit'] = state.circuit; break;
-                case 'surface': data['surface'] = state.surface; break;
                 default: console.log(`Unexpected post field: '${field}'`); break;
             }
         });
@@ -656,28 +561,6 @@ var driveHandler = new function() {
 
     var updateDriveMode = function(mode){
       state.driveMode = mode;
-      
-      // Handle throttle control visibility based on drive mode
-      if (mode === 'user') {
-        // In user mode, show throttle controls based on the current throttle mode selection
-        var currentThrottleMode = $('#throttle_mode_select').val();
-        
-        // First hide both containers explicitly
-        $('#max_throttle_container').css('display', 'none');
-        $('#steer_limited_controls').css('display', 'none');
-        
-        // Then show the appropriate one
-        if (currentThrottleMode === 'steer_limited') {
-          $('#steer_limited_controls').css('display', 'inline-block');
-        } else {
-          $('#max_throttle_container').css('display', 'inline-block');
-        }
-      } else {
-        // In AI modes (local, local_angle), hide all throttle controls
-        $('#max_throttle_container').css('display', 'none');
-        $('#steer_limited_controls').css('display', 'none');
-      }
-      
       postDrive(["drive_mode"])
     };
 
@@ -745,21 +628,6 @@ var driveHandler = new function() {
 
       if (state.throttleMode == 'constant') {
         limitedThrottle = state.maxThrottle;
-      }
-      
-      if (state.throttleMode == 'steer_limited') {
-        // Interpolate between straight throttle and full steer throttle based on steering angle
-        // When steering is 0, use straightThrottle
-        // When steering is at maximum (1.0), use steerThrottle
-        var steerAmount = Math.abs(state.tele.user.angle); // 0 to 1
-        var maxAllowedThrottle = state.straightThrottle + 
-                                (state.steerThrottle - state.straightThrottle) * steerAmount;
-        
-        if (newThrottle > 0) {
-          limitedThrottle = Math.min(maxAllowedThrottle, newThrottle);
-        } else if (newThrottle < 0) {
-          limitedThrottle = Math.max(-maxAllowedThrottle, newThrottle);
-        }
       }
 
       return limitedThrottle;

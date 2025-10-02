@@ -1,0 +1,464 @@
+#!/bin/bash
+# DonkeyCar UV Environment Setup
+# This script sets up UV environments for different platforms without requiring Python first
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+BOLD='\033[1m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+print_status() {
+    echo -e "${GREEN}✓${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}⚠${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}✗${NC} $1"
+}
+
+print_info() {
+    echo -e "${BLUE}ℹ${NC} $1"
+}
+
+print_header() {
+    echo -e "${BOLD}$1${NC}"
+}
+
+# Function to print banner
+print_banner() {
+    echo "================================================================"
+    echo "🏎️  DonkeyCar UV Environment Setup"
+    echo "================================================================"
+    echo ""
+}
+
+# Function to detect platform
+detect_platform() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "macos"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Check for Raspberry Pi
+        if [[ -f /proc/cpuinfo ]] && grep -q "Raspberry Pi\|BCM" /proc/cpuinfo; then
+            echo "pi"
+        # Check for Jetson Nano
+        elif [[ -f /proc/device-tree/model ]] && grep -qi "jetson" /proc/device-tree/model; then
+            echo "nano"
+        else
+            echo "pc"
+        fi
+    elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+        echo "pc"
+    else
+        echo "pc"
+    fi
+}
+
+# Function to check if UV is installed
+check_uv() {
+    if command -v uv &> /dev/null; then
+        UV_VERSION=$(uv --version 2>/dev/null || echo "unknown")
+        print_status "UV is installed: $UV_VERSION"
+        return 0
+    else
+        print_error "UV is not installed"
+        return 1
+    fi
+}
+
+# Function to install UV
+install_uv() {
+    print_info "Installing UV package manager..."
+    
+    if command -v curl &> /dev/null; then
+        print_info "Installing UV using the official installer..."
+        if curl -LsSf https://astral.sh/uv/install.sh | sh; then
+            # Add to current session PATH
+            export PATH="$HOME/.cargo/bin:$PATH"
+            # Add to shell profile for future sessions
+            if [[ "$SHELL" == *"zsh"* ]] && [[ -f "$HOME/.zshrc" ]]; then
+                echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> "$HOME/.zshrc"
+            elif [[ "$SHELL" == *"bash"* ]] && [[ -f "$HOME/.bashrc" ]]; then
+                echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> "$HOME/.bashrc"
+            fi
+            print_status "UV installed successfully"
+            return 0
+        else
+            print_error "Failed to install UV using official installer"
+        fi
+    fi
+    
+    # Fallback to pip if available
+    if command -v pip &> /dev/null || command -v pip3 &> /dev/null; then
+        print_info "Trying to install UV using pip..."
+        if pip install uv 2>/dev/null || pip3 install uv 2>/dev/null; then
+            print_status "UV installed successfully via pip"
+            return 0
+        else
+            print_error "Failed to install UV via pip"
+        fi
+    fi
+    
+    print_error "Could not install UV automatically"
+    print_info "Please install UV manually:"
+    print_info "  Visit: https://docs.astral.sh/uv/getting-started/installation/"
+    return 1
+}
+
+# Function to create pyproject.toml
+create_pyproject_toml() {
+    print_info "Creating pyproject.toml..."
+    
+    cat > pyproject.toml << 'EOF'
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "donkeycar"
+dynamic = ["version"]
+description = "Self driving library for python."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Will Roscoe"},
+    {name = "Adam Conway"},
+    {name = "Tawn Kramer"},
+]
+keywords = ["selfdriving", "cars", "donkeycar", "diyrobocars"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+]
+
+# Core dependencies that work across all platforms
+dependencies = [
+    "numpy",
+    "pillow",
+    "docopt",
+    "tornado",
+    "requests",
+    "PrettyTable",
+    "paho-mqtt",
+    "simple_pid",
+    "progress",
+    "pyfiglet",
+    "psutil",
+    "pynmea2",
+    "pyserial",
+    "utm",
+    "pandas",
+    "pyyaml",
+]
+
+[project.urls]
+Homepage = "https://github.com/autorope/donkeycar"
+Repository = "https://github.com/autorope/donkeycar"
+Issues = "https://github.com/autorope/donkeycar/issues"
+
+[project.scripts]
+donkey = "donkeycar.management.base:execute_from_command_line"
+
+[project.optional-dependencies]
+# Raspberry Pi specific dependencies
+pi = [
+    "picamera2",
+    "Adafruit_PCA9685",
+    "adafruit-circuitpython-ssd1306",
+    "adafruit-circuitpython-rplidar",
+    "RPi.GPIO",
+    "tensorflow-aarch64==2.15.*",
+    "opencv-contrib-python",
+]
+
+# Jetson Nano specific dependencies
+nano = [
+    "Adafruit_PCA9685",
+    "adafruit-circuitpython-ssd1306",
+    "adafruit-circuitpython-rplidar",
+    "Jetson.GPIO",
+    "numpy==1.23.*",
+    "matplotlib==3.7.*",
+    "kivy",
+    "plotly",
+    "pandas==2.0.*",
+]
+
+# PC (Linux/Windows) specific dependencies
+pc = [
+    "tensorflow==2.15.*",
+    "matplotlib",
+    "kivy",
+    "pandas",
+    "plotly",
+    "albumentations",
+    "opencv-python",
+]
+
+# macOS specific dependencies
+macos = [
+    "tensorflow-macos==2.15.*",
+    "matplotlib",
+    "kivy",
+    "pandas",
+    "plotly",
+    "albumentations",
+    "opencv-python",
+]
+
+# Development dependencies
+dev = [
+    "pytest",
+    "pytest-cov",
+    "responses",
+    "mypy",
+    "black",
+    "isort",
+    "flake8",
+]
+
+# PyTorch dependencies (cross-platform)
+torch = [
+    "torch==2.1.*",
+    "pytorch-lightning",
+    "torchvision",
+    "torchaudio",
+    "fastai",
+]
+
+[tool.setuptools]
+packages = ["donkeycar"]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "donkeycar.__version__"}
+
+[tool.setuptools.package-data]
+"*" = ["*.html", "*.ini", "*.txt", "*.kv"]
+
+# UV-specific configuration
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+    "pytest-cov", 
+    "responses",
+    "mypy",
+    "black",
+    "isort",
+    "flake8",
+]
+EOF
+
+    print_status "Created pyproject.toml"
+}
+
+# Function to setup UV environment
+setup_uv_environment() {
+    local platform=$1
+    local extras=${2:-""}
+    
+    print_info "Setting up UV environment for platform: $platform"
+    
+    # Build extras string
+    local extras_str="$platform"
+    if [[ -n "$extras" ]]; then
+        extras_str="$platform,$extras"
+    fi
+    
+    print_info "Installing donkeycar with extras: $extras_str"
+    
+    # Simple approach: install base dependencies first, then add platform-specific ones
+    print_info "Installing base dependencies..."
+    if uv sync --no-extra-all; then
+        print_status "Base dependencies installed successfully"
+    else
+        print_warning "Base dependency installation had issues, continuing..."
+    fi
+    
+    # Now install platform-specific extras
+    print_info "Installing platform-specific dependencies for: $platform"
+    if uv sync --extra "$platform"; then
+        print_status "Platform dependencies installed successfully"
+    else
+        print_warning "Platform sync failed, trying individual package installation..."
+        
+        # Fallback: install packages individually to avoid dependency conflicts
+        if uv run pip install -e ".[$platform]"; then
+            print_status "Platform dependencies installed via pip"
+        else
+            print_error "Failed to install platform dependencies"
+            return 1
+        fi
+    fi
+    
+    # Install additional extras if specified
+    if [[ -n "$extras" ]]; then
+        IFS=',' read -ra EXTRA_ARRAY <<< "$extras"
+        for extra in "${EXTRA_ARRAY[@]}"; do
+            print_info "Installing extra: $extra"
+            if uv sync --extra "$extra"; then
+                print_status "Extra '$extra' installed successfully"
+            else
+                print_warning "Failed to install extra: $extra"
+            fi
+        done
+    fi
+    
+    print_status "Successfully set up donkeycar environment for $platform"
+    return 0
+}
+
+# Function to show usage
+show_usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  -p, --platform PLATFORM    Force specific platform (pi, nano, pc, macos)"
+    echo "  -e, --extras EXTRAS         Additional extras (dev, torch)"
+    echo "  -i, --install-uv            Install UV if not present"
+    echo "  -h, --help                  Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0                          # Auto-detect platform and setup"
+    echo "  $0 -p pi                    # Force Raspberry Pi setup"
+    echo "  $0 -e dev,torch             # Include development and PyTorch extras"
+    echo "  $0 -p nano -e dev           # Jetson Nano with dev tools"
+    echo "  $0 -i                       # Install UV and setup environment"
+}
+
+# Function to validate environment
+validate_environment() {
+    if [[ ! -d "donkeycar" ]] || [[ ! -f "setup.cfg" ]]; then
+        print_error "This doesn't appear to be a DonkeyCar project directory"
+        print_info "Please run this script from the DonkeyCar project root"
+        return 1
+    fi
+    return 0
+}
+
+# Parse command line arguments
+PLATFORM=""
+EXTRAS=""
+INSTALL_UV=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -p|--platform)
+            PLATFORM="$2"
+            shift 2
+            ;;
+        -e|--extras)
+            EXTRAS="$2"
+            shift 2
+            ;;
+        -i|--install-uv)
+            INSTALL_UV=true
+            shift
+            ;;
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        *)
+            print_error "Unknown option: $1"
+            show_usage
+            exit 1
+            ;;
+    esac
+done
+
+# Main execution
+print_banner
+
+# Validate environment
+if ! validate_environment; then
+    exit 1
+fi
+
+# Check/install UV
+if ! check_uv; then
+    if [[ "$INSTALL_UV" == true ]]; then
+        if ! install_uv; then
+            exit 1
+        fi
+    else
+        print_error "UV is required but not installed"
+        print_info "Use -i/--install-uv to install it automatically"
+        print_info "Or install manually: https://docs.astral.sh/uv/getting-started/installation/"
+        exit 1
+    fi
+fi
+
+# Create pyproject.toml if it doesn't exist
+if [[ ! -f "pyproject.toml" ]]; then
+    create_pyproject_toml
+fi
+
+# Detect or use specified platform
+if [[ -z "$PLATFORM" ]]; then
+    PLATFORM=$(detect_platform)
+    print_info "Auto-detected platform: $PLATFORM"
+else
+    print_info "Using specified platform: $PLATFORM"
+fi
+
+# Validate platform
+case $PLATFORM in
+    pi|nano|pc|macos)
+        ;;
+    *)
+        print_error "Invalid platform: $PLATFORM"
+        print_info "Valid platforms: pi, nano, pc, macos"
+        exit 1
+        ;;
+esac
+
+# Show environment info
+print_header "Environment Configuration:"
+echo "  Platform: $PLATFORM"
+echo "  Python: 3.11"
+if [[ -n "$EXTRAS" ]]; then
+    echo "  Extras: $EXTRAS"
+fi
+echo ""
+
+# Setup environment
+if setup_uv_environment "$PLATFORM" "$EXTRAS"; then
+    echo ""
+    echo "================================================================"
+    print_header "🎉 UV Environment Setup Complete!"
+    echo "================================================================"
+    echo ""
+    print_status "Platform: $PLATFORM"
+    if [[ -n "$EXTRAS" ]]; then
+        print_status "Extras: $EXTRAS"
+    fi
+    echo ""
+    print_header "Next steps:"
+    echo "  1. Activate environment: source .venv/bin/activate"
+    echo "  2. Create a car: donkey createcar --path ~/mycar"
+    echo "  3. Start development!"
+    echo ""
+    print_info "Alternative - run commands with UV (no activation needed):"
+    echo "  uv run python your_script.py"
+    echo "  uv run donkey createcar --path ~/mycar"
+    echo ""
+    print_info "To add more packages:"
+    echo "  uv add package-name"
+    echo "  # or activate and use: pip install package-name"
+else
+    print_error "Environment setup failed"
+    exit 1
+fi

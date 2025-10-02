@@ -1,0 +1,21 @@
+# UV configuration for Raspberry Pi
+[tool.uv]
+python = "3.11"
+
+# Raspberry Pi specific settings
+[tool.uv.pip]
+# Use pre-compiled wheels when possible for ARM architecture
+find-links = [
+    "https://www.piwheels.org/simple/"
+]
+
+# Environment variables for Raspberry Pi
+[tool.uv.env]
+PLATFORW = "pi"
+ARCHITECTURE = "armv7l"
+TENSORFLOW_PACKAGE = "tensorflow-aarch64"
+
+# Override dependencies for Pi-specific versions
+[tool.uv.override-dependencies]
+tensorflow = "tensorflow-aarch64==2.15.*"
+opencv-python = "opencv-contrib-python"

@@ -499,10 +499,6 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
         inputs += ['cam/depth_array']
         types += ['gray16_array']
 
-    if cfg.CAMERA_TYPE == "OAKD" and cfg.OAKD_DEPTH:
-        inputs += ['cam/depth_array']
-        types += ['gray16_array']
-
     if cfg.HAVE_IMU or (cfg.CAMERA_TYPE == "D435" and cfg.REALSENSE_D435_IMU):
         inputs += ['imu/acl_x', 'imu/acl_y', 'imu/acl_z',
             'imu/gyr_x', 'imu/gyr_y', 'imu/gyr_z']
@@ -698,7 +694,7 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
     # This web controller will create a web server that is capable
     # of managing steering, throttle, and modes, and more.
     #
-    ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT, mode=cfg.WEB_INIT_MODE, cfg = cfg)
+    ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT, mode=cfg.WEB_INIT_MODE)
     V.add(ctr,
           inputs=[input_image, 'tub/num_records', 'user/mode', 'recording'],
           outputs=['user/steering', 'user/throttle', 'user/mode', 'recording', 'web/buttons'],
@@ -877,17 +873,6 @@ def add_camera(V, cfg, camera_type):
                        'imu/acl_x', 'imu/acl_y', 'imu/acl_z',
                        'imu/gyr_x', 'imu/gyr_y', 'imu/gyr_z'],
               threaded=True)
-        
-    elif cfg.CAMERA_TYPE == "OAKD":
-        from donkeycar.parts.oak_d import OakD
-        cam = OakD(
-            enable_rgb=cfg.OAKD_RGB,
-            enable_depth=cfg.OAKD_DEPTH,
-            device_id=cfg.OAKD_ID)
-        V.add(cam, inputs=[],
-              outputs=['cam/image_array', 'cam/depth_array'],
-              threaded=True)
-
     else:
         inputs = []
         outputs = ['cam/image_array']

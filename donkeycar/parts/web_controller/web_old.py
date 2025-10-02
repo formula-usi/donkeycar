@@ -7,7 +7,6 @@ remotes.py
 The client and web server needed to control a car remotely.
 """
 
-from ...config import Config
 
 import os
 import json
@@ -23,7 +22,7 @@ from tornado.httpserver import HTTPServer
 import tornado.gen
 import tornado.websocket
 from socket import gethostname
-from donkeycar.surface_handler import compute_throttle, compute_steering_angle
+
 from ... import utils
 
 logger = logging.getLogger(__name__)
@@ -57,12 +56,10 @@ class RemoteWebServer():
             # get latest value from server
             self.angle, self.throttle, self.mode, self.recording = self.run()
 
-
     def run_threaded(self):
         '''
         Return the last state given from the remote server.
         '''
-
         return self.angle, self.throttle, self.mode, self.recording
 
     def run(self):
@@ -96,7 +93,6 @@ class RemoteWebServer():
         drive_mode = str(data['drive_mode'])
         recording = bool(data['recording'])
 
-
         return angle, throttle, drive_mode, recording
 
     def shutdown(self):
@@ -105,7 +101,7 @@ class RemoteWebServer():
 
 class LocalWebController(tornado.web.Application):
 
-    def __init__(self, port=8887, mode='user', cfg: Config = None):
+    def __init__(self, port=8887, mode='user'):
         """
         Create and publish variables needed on many of
         the web handlers.
@@ -124,27 +120,19 @@ class LocalWebController(tornado.web.Application):
 
         self.port = port
 
-        self.circuit = "Default Circuit"
-        self.surface = "Dry"
-        self.circuit_icon = None  # For blob image data
-
         self.num_records = 0
         self.wsclients = []
         self.loop = None
-        self.cfg = cfg
-        if self.cfg is not None:
-            # Pass the config object for altering AI_THROTTLE_MULT
-            self.DEFAULT_AI_THROTTLE_MULT = self.cfg.AI_THROTTLE_MULT
+
 
         handlers = [
             (r"/", RedirectHandler, dict(url="/drive")),
-            (r"/drive", DriveAPI, dict(ai_throttle_mul=self.cfg.AI_THROTTLE_MULT if self.cfg is not None else 0.0)),
-            (r"/wsDrive", WebSocketDriveAPI, dict(cfg=self.cfg)),
+            (r"/drive", DriveAPI),
+            (r"/wsDrive", WebSocketDriveAPI),
             (r"/wsCalibrate", WebSocketCalibrateAPI),
             (r"/calibrate", CalibrateHandler),
             (r"/video", VideoAPI),
             (r"/wsTest", WsTest),
-            (r"/circuit", CircuitAPI, dict(circuit=self.circuit, surface=self.surface)),
 
             (r"/static/(.*)", StaticFileHandler,
              {"path": self.static_file_path}),
@@ -174,20 +162,12 @@ class LocalWebController(tornado.web.Application):
                                    exc_info=e)
                     pass
 
-    def send_websocket_data(self, data):
-        """Send data directly to WebSocket clients"""
-
-        if self.loop is not None:
-            self.loop.add_callback(lambda: self.update_wsclients(data))
-
-    def run_threaded(self, img_arr=None, num_records=0, mode=None, recording=None, custom_values=None, text_content=None):
+    def run_threaded(self, img_arr=None, num_records=0, mode=None, recording=None):
         """
         :param img_arr: current camera image or None
         :param num_records: current number of data records
         :param mode: default user/mode
         :param recording: default recording mode
-        :param custom_values: custom values to display
-        :param text_content: text content to display
         """
         self.img_arr = img_arr
         self.num_records = num_records
@@ -216,14 +196,6 @@ class LocalWebController(tornado.web.Application):
             if self.num_records % 10 == 0:
                 changes['num_records'] = self.num_records
 
-        # Send custom values if provided
-        if custom_values is not None:
-            changes['custom_values'] = custom_values
-
-        # Send text content if provided
-        if text_content is not None:
-            changes['text_content'] = text_content
-
         #
         # get latched button presses then clear button presses
         # Next iteration will clear press in memory
@@ -233,14 +205,16 @@ class LocalWebController(tornado.web.Application):
         for button, pressed in buttons.items():
             if pressed:
                 self.buttons[button] = False
-        # if there were changes, or if we have custom data to send, then send to web client
-        if (changes or custom_values is not None or text_content is not None) and self.loop is not None:
+
+        # if there were changes, then send to web client
+        if changes and self.loop is not None:
+            logger.debug(str(changes))
             self.loop.add_callback(lambda: self.update_wsclients(changes))
 
         return self.angle, self.throttle, self.mode, self.recording, buttons
 
-    def run(self, img_arr=None, num_records=0, mode=None, recording=None, custom_values=None, text_content=None):
-        return self.run_threaded(img_arr, num_records, mode, recording, custom_values, text_content)
+    def run(self, img_arr=None, num_records=0, mode=None, recording=None):
+        return self.run_threaded(img_arr, num_records, mode, recording)
 
     def shutdown(self):
         pass
@@ -248,18 +222,8 @@ class LocalWebController(tornado.web.Application):
 
 class DriveAPI(RequestHandler):
 
-
-    def initialize(self, ai_throttle_mul: float = 0.0) -> None:
-        self.ai_throttle_mul = ai_throttle_mul
-
-
     def get(self):
-        data = {
-            "current_ai_mul": str(self.ai_throttle_mul),
-            "current_circuit": self.application.circuit,
-            "current_surface": self.application.surface,
-            "current_circuit_icon": self.application.circuit_icon
-        }
+        data = {}
         self.render("templates/vehicle.html", **data)
 
     def post(self):
@@ -312,9 +276,6 @@ def latch_buttons(buttons, pushes):
 
 
 class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
-    def initialize(self, cfg: Config):
-        self.cfg = cfg
-    
     def check_origin(self, origin):
         return True
 
@@ -324,32 +285,8 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
 
     def on_message(self, message):
         data = json.loads(message)
-        self.application.surface = data.get('surface', self.application.surface)
-
-        new_throttle = compute_throttle(data.get('throttle', self.application.throttle), self.application.throttle, self.application.surface)
-        new_steering = compute_steering_angle(data.get('angle', self.application.angle), self.application.angle, self.application.surface)
-
-        self.application.angle = new_steering
-        self.application.throttle = new_throttle
-        
-        # Track changes for broadcasting
-        changes = {}
-        
-        # Update circuit and track changes
-        if data.get('circuit') is not None and self.application.circuit != data['circuit']:
-            self.application.circuit = data['circuit']
-            changes['circuit'] = self.application.circuit
-            
-        # Update circuit_icon and track changes  
-        if data.get('circuit_icon') is not None and self.application.circuit_icon != data['circuit_icon']:
-            self.application.circuit_icon = data['circuit_icon']
-            changes['circuit_icon'] = self.application.circuit_icon
-            
-        # Update surface and track changes
-        if data.get('surface') is not None and self.application.surface != data['surface']:
-            self.application.surface = data['surface']
-            changes['surface'] = self.application.surface
-
+        self.application.angle = data.get('angle', self.application.angle)
+        self.application.throttle = data.get('throttle', self.application.throttle)
         if data.get('drive_mode') is not None:
             self.application.mode = data['drive_mode']
             self.application.mode_latch = self.application.mode
@@ -358,13 +295,6 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
             self.application.recording_latch = self.application.recording
         if data.get('buttons') is not None:
             latch_buttons(self.application.buttons, data['buttons'])
-        if data.get('ai_throttle_update') is not None:
-            self.cfg.AI_THROTTLE_MULT = float(data['ai_throttle_update'])
-            #print(f'AI_THROTTLE_MULTIPLIER: {self.cfg.AI_THROTTLE_MULT}')
-            
-        # Send updates to all WebSocket clients if there were changes
-        if changes:
-            self.application.send_websocket_data(changes)
 
     def on_close(self):
         logger.info("Client disconnected")
@@ -512,38 +442,3 @@ class WebFpv(Application):
         pass
 
 
-class CircuitAPI(RequestHandler):
-
-
-    def initialize(self, 
-                   circuit: str = "Default Circuit",
-                   surface: str = "Dry") -> None:
-        self.circuit = circuit
-        self.surface = surface
-
-
-    def get(self):
-        data = {"current_circuit": self.circuit, "current_surface": self.surface}
-        self.render("templates/vehicle.html", **data)
-
-    def post(self):
-        '''
-        Receive post requests as user changes the circuit
-        and surface of the vehicle on the webpage
-        '''
-        data = tornado.escape.json_decode(self.request.body)
-        
-        changes = {}
-        if data.get('circuit') is not None:
-            self.application.circuit = data['circuit']
-            changes['circuit'] = self.application.circuit
-        if data.get('surface') is not None:
-            self.application.surface = data['surface']
-            changes['surface'] = self.application.surface
-        if data.get('circuit_icon') is not None:
-            self.application.circuit_icon = data['circuit_icon']
-            changes['circuit_icon'] = self.application.circuit_icon
-            
-        # Send updates to WebSocket clients
-        if changes:
-            self.application.send_websocket_data(changes)
