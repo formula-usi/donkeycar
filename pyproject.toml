@@ -41,7 +41,6 @@ dependencies = [
     "utm",
     "pandas",
     "pyyaml",
-    "tensorflow-metal>=1.2.0",
     "gym-donkeycar",
 ]
 
@@ -96,6 +95,13 @@ pc = [
     "opencv-python",
 ]
 
+# Raspberri Pi
+pi = [
+    "tensorflow-aarch64==2.15.1",
+    "tensorflow-estimator==2.15.0",
+    "tensorflow-io-gcs-filesystem==0.37.1",
+]
+
 [tool.setuptools]
 packages = ["donkeycar"]
 include-package-data = true
@@ -107,8 +113,8 @@ version = {attr = "donkeycar.__version__"}
 "*" = ["*.html", "*.ini", "*.txt", "*.kv"]
 
 # UV-specific configuration
-[tool.uv]
-dev-dependencies = [
+[dependency-group]
+dev = [
     "pytest",
     "pytest-cov", 
     "responses",

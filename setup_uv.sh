@@ -82,12 +82,12 @@ install_uv() {
         print_info "Installing UV using the official installer..."
         if curl -LsSf https://astral.sh/uv/install.sh | sh; then
             # Add to current session PATH
-            export PATH="$HOME/.cargo/bin:$PATH"
+            export PATH="$HOME/.local/bin:$PATH"
             # Add to shell profile for future sessions
             if [[ "$SHELL" == *"zsh"* ]] && [[ -f "$HOME/.zshrc" ]]; then
-                echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> "$HOME/.zshrc"
+                echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.zshrc"
             elif [[ "$SHELL" == *"bash"* ]] && [[ -f "$HOME/.bashrc" ]]; then
-                echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> "$HOME/.bashrc"
+                echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
             fi
             print_status "UV installed successfully"
             return 0
@@ -281,7 +281,7 @@ setup_uv_environment() {
     
     # Simple approach: install base dependencies first, then add platform-specific ones
     print_info "Installing base dependencies..."
-    if uv sync --no-extra-all; then
+    if uv sync; then
         print_status "Base dependencies installed successfully"
     else
         print_warning "Base dependency installation had issues, continuing..."
