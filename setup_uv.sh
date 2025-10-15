@@ -281,6 +281,7 @@ setup_uv_environment() {
     
     # Simple approach: install base dependencies first, then add platform-specific ones
     print_info "Installing base dependencies..."
+    uv venv --system-site-packages .venv
     if uv sync; then
         print_status "Base dependencies installed successfully"
     else
