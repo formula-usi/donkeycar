@@ -66,10 +66,10 @@ dev = [
 
 # PyTorch (cross-platform)
 torch = [
-    "torch==2.1.*",
-    "pytorch-lightning",
-    "torchvision", 
-    "torchaudio",
+    #"torch==2.1.*",
+    #"pytorch-lightning",
+    #"torchvision", 
+    #"torchaudio",
     "fastai",
 ]
 
