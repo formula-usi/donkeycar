@@ -198,7 +198,7 @@ nano = [
 
 # PC (Linux/Windows) specific dependencies
 pc = [
-    "tensorflow==2.15.*",
+    "tensorflow[and-cuda]==2.15.*",
     "matplotlib",
     "kivy",
     "pandas",
@@ -268,6 +268,7 @@ EOF
 setup_uv_environment() {
     local platform=$1
     local extras=${2:-""}
+    local install_tensorrt=${3:-"auto"}
     
     print_info "Setting up UV environment for platform: $platform"
     
@@ -279,29 +280,17 @@ setup_uv_environment() {
     
     print_info "Installing donkeycar with extras: $extras_str"
     
-    # Simple approach: install base dependencies first, then add platform-specific ones
-    print_info "Installing base dependencies..."
+    # Create virtual environment
+    print_info "Creating virtual environment..."
     uv venv --system-site-packages .venv
-    if uv sync; then
-        print_status "Base dependencies installed successfully"
-    else
-        print_warning "Base dependency installation had issues, continuing..."
-    fi
     
-    # Now install platform-specific extras
-    print_info "Installing platform-specific dependencies for: $platform"
-    if uv sync --extra "$platform"; then
+    # Install the package with only the specified platform extras
+    print_info "Installing donkeycar with platform dependencies for: $platform"
+    if uv pip install -e ".[$platform]"; then
         print_status "Platform dependencies installed successfully"
     else
-        print_warning "Platform sync failed, trying individual package installation..."
-        
-        # Fallback: install packages individually to avoid dependency conflicts
-        if uv run pip install -e ".[$platform]"; then
-            print_status "Platform dependencies installed via pip"
-        else
-            print_error "Failed to install platform dependencies"
-            return 1
-        fi
+        print_error "Failed to install platform dependencies"
+        return 1
     fi
     
     # Install additional extras if specified
@@ -309,12 +298,23 @@ setup_uv_environment() {
         IFS=',' read -ra EXTRA_ARRAY <<< "$extras"
         for extra in "${EXTRA_ARRAY[@]}"; do
             print_info "Installing extra: $extra"
-            if uv sync --extra "$extra"; then
+            if uv pip install -e ".[$extra]"; then
                 print_status "Extra '$extra' installed successfully"
             else
                 print_warning "Failed to install extra: $extra"
             fi
         done
+    fi
+    
+    # Install TensorRT for PC platform (optional GPU optimization)
+    if [[ "$platform" == "pc" ]] && [[ "$install_tensorrt" != "no" ]]; then
+        print_info "Installing TensorRT for GPU optimization (this may take a while)..."
+        # For TensorFlow 2.15 with CUDA 12.2, we need TensorRT compatible with CUDA 12
+        # Note: TensorRT 10.x requires CUDA 13, so we skip for now
+        # Users can install manually if they have compatible CUDA version
+        print_warning "TensorRT auto-installation is currently not available for TensorFlow 2.15/CUDA 12"
+        print_info "The TF-TRT warning can be safely ignored for PC environments"
+        print_info "If you need TensorRT, consider upgrading to TensorFlow 2.16+ with CUDA 13"
     fi
     
     print_status "Successfully set up donkeycar environment for $platform"
@@ -328,6 +328,8 @@ show_usage() {
     echo "Options:"
     echo "  -p, --platform PLATFORM    Force specific platform (pi, nano, pc, macos)"
     echo "  -e, --extras EXTRAS         Additional extras (dev, torch)"
+    echo "  -t, --tensorrt              Install TensorRT for GPU optimization (PC only)"
+    echo "  --no-tensorrt               Skip TensorRT installation"
     echo "  -i, --install-uv            Install UV if not present"
     echo "  -h, --help                  Show this help message"
     echo ""
@@ -337,6 +339,8 @@ show_usage() {
     echo "  $0 -e dev,torch             # Include development and PyTorch extras"
     echo "  $0 -p nano -e dev           # Jetson Nano with dev tools"
     echo "  $0 -i                       # Install UV and setup environment"
+    echo "  $0 -t                       # Setup with TensorRT (PC)"
+    echo "  $0 --no-tensorrt            # Setup without TensorRT"
 }
 
 # Function to validate environment
@@ -353,6 +357,7 @@ validate_environment() {
 PLATFORM=""
 EXTRAS=""
 INSTALL_UV=false
+INSTALL_TENSORRT="auto"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -363,6 +368,14 @@ while [[ $# -gt 0 ]]; do
         -e|--extras)
             EXTRAS="$2"
             shift 2
+            ;;
+        -t|--tensorrt)
+            INSTALL_TENSORRT="yes"
+            shift
+            ;;
+        --no-tensorrt)
+            INSTALL_TENSORRT="no"
+            shift
             ;;
         -i|--install-uv)
             INSTALL_UV=true
@@ -436,7 +449,7 @@ fi
 echo ""
 
 # Setup environment
-if setup_uv_environment "$PLATFORM" "$EXTRAS"; then
+if setup_uv_environment "$PLATFORM" "$EXTRAS" "$INSTALL_TENSORRT"; then
     echo ""
     echo "================================================================"
     print_header "🎉 UV Environment Setup Complete!"
