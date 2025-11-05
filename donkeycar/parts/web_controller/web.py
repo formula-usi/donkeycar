@@ -126,7 +126,7 @@ class LocalWebController(tornado.web.Application):
 
         self.circuit = "Default"
         self.surface = "Dry"
-        self.circuit_icon = None  # For blob image data
+        self.circuit_icon = "static/images/default_circuit.png"  # For blob image data
 
         self.num_records = 0
         self.wsclients = []
@@ -516,7 +516,7 @@ class CircuitAPI(RequestHandler):
     def initialize(self, 
                    circuit: str = "Default",
                    surface: str = "Dry",
-                   circuit_icon: str = None) -> None:
+                   circuit_icon: str = "static/images/circuit_icon.png") -> None:
         self.circuit = circuit
         self.surface = surface
         self.circuit_icon = circuit_icon

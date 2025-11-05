@@ -26,7 +26,7 @@ var driveHandler = new function() {
         'aiThrottleMul': 0.0,
         'circuit': 'Default',
         'surface': 'Dry',
-        'circuit_icon': null,  // For blob image data
+        'circuit_icon': '/static/images/default_circuit.png',
 
         'buttons': {
             "w1": false,  // boolean; true is 'down' or pushed, false is 'up' or not pushed
