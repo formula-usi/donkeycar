@@ -8,13 +8,13 @@ def compute_throttle(throttle, old_throttle, surface):
     Args:
         throttle: Current throttle input (-1 to 1)
         old_throttle: Previous throttle value
-        surface: Surface type ("dry", "wet", "frozen")
+        surface: Surface type ("Dry", "Wet", "Frozen")
     """
-    if surface == "dry":
+    if surface == "Dry":
         return throttle
-    elif surface == "wet":
+    elif surface == "Wet":
         return apply_wet_conditions(throttle, old_throttle)
-    elif surface == "frozen":
+    elif surface == "Frozen":
         return apply_icy_conditions(throttle, old_throttle)
     else:
         return throttle
@@ -26,13 +26,13 @@ def compute_steering_angle(steering_angle, old_steering_angle, surface):
     Args:
         steering_angle: Current steering input (-1 to 1)
         old_steering_angle: Previous steering value
-        surface: Surface type ("dry", "wet", "frozen")
+        surface: Surface type ("Dry", "Wet", "Frozen")
     """
-    if surface == "dry":
+    if surface == "Dry":
         return steering_angle
-    elif surface == "wet":
+    elif surface == "Wet":
         return apply_wet_steering(steering_angle, old_steering_angle)
-    elif surface == "frozen":
+    elif surface == "Frozen":
         return apply_icy_steering(steering_angle, old_steering_angle)
     else:
         return steering_angle

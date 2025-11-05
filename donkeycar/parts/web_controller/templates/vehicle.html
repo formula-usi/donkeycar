@@ -63,19 +63,19 @@
 
         <!-- circuit display -->
         <div style="margin-top: 10px;">
-            <label>Current Circuit: </label>
-            <span id="circuit_display" style="font-weight: bold; color: #337ab7;">default</span>
+            <label>Circuit: </label>
+            <span id="circuit_display" style="font-weight: bold; color: #337ab7;">Default</span>
         </div>
 
         <!-- surface display -->
         <div style="margin-top: 5px;">
-            <label>Surface: </label>
-            <span id="surface_display" style="font-weight: bold; color: #337ab7;">dry</span>
+            <label>Weather: </label>
+            <span id="surface_display" style="font-weight: bold; color: #337ab7;">Dry</span>
         </div>
 
         <!-- circuit image display -->
         <div style="margin-top: 10px;">
-            <label>Circuit Image: </label>
+            <label>Minimap</label><br/>
             <div style="margin-top: 5px; border: 2px solid #337ab7; border-radius: 5px; padding: 5px; display: inline-block; background-color: #f8f9fa;">
                 <img id="circuit_image" src="/static/images/default_circuit.png" 
                      alt="Circuit Image" 
@@ -266,8 +266,9 @@
 <script type="text/javascript">
   // Initialize state with server-side values
   window.serverState = {
-    circuit: "{{ current_circuit if current_circuit else 'default' }}",
-    surface: "{{ current_surface if current_surface else 'dry' }}"
+    circuit: "{{ current_circuit if current_circuit else 'Default' }}",
+    surface: "{{ current_surface if current_surface else 'Dry' }}",
+    circuit_icon: "{{ current_circuit_icon if current_surface else 'Dry' }}"
   };
 </script>
 

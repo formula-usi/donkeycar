@@ -24,8 +24,8 @@ var driveHandler = new function() {
         'straightThrottle' : 1.0,  // For steer_limited mode: throttle when going straight
         'steerThrottle' : 0.5,     // For steer_limited mode: throttle at full steering
         'aiThrottleMul': 0.0,
-        'circuit': 'default',
-        'surface': 'dry',
+        'circuit': 'Default',
+        'surface': 'Dry',
         'circuit_icon': null,  // For blob image data
 
         'buttons': {
@@ -329,7 +329,7 @@ var driveHandler = new function() {
         // Add error handling - fallback to default image if circuit-specific image doesn't exist
         circuitImageElement.off('error').on('error', function() {
           $(this).attr('src', '/static/images/default_circuit.png');
-          $(this).attr('alt', 'Default Circuit');
+          $(this).attr('alt', 'Default');
         });
       }
       
@@ -504,6 +504,7 @@ var driveHandler = new function() {
                 case 'ai_throttle_update': data['ai_throttle_update'] = state.aiThrottleMul; break;
                 case 'circuit': data['circuit'] = state.circuit; break;
                 case 'surface': data['surface'] = state.surface; break;
+                case 'circuit_icon': data['circuit_icon'] = state.circuit_icon; break;
                 default: console.log(`Unexpected post field: '${field}'`); break;
             }
         });

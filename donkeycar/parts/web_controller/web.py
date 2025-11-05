@@ -124,7 +124,7 @@ class LocalWebController(tornado.web.Application):
 
         self.port = port
 
-        self.circuit = "Default Circuit"
+        self.circuit = "Default"
         self.surface = "Dry"
         self.circuit_icon = None  # For blob image data
 
@@ -144,7 +144,7 @@ class LocalWebController(tornado.web.Application):
             (r"/calibrate", CalibrateHandler),
             (r"/video", VideoAPI),
             (r"/wsTest", WsTest),
-            (r"/circuit", CircuitAPI, dict(circuit=self.circuit, surface=self.surface)),
+            (r"/circuit", CircuitAPI, dict(circuit=self.circuit, surface=self.surface, circuit_icon=self.circuit_icon)),
 
             (r"/static/(.*)", StaticFileHandler,
              {"path": self.static_file_path}),
@@ -360,7 +360,6 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
             latch_buttons(self.application.buttons, data['buttons'])
         if data.get('ai_throttle_update') is not None:
             self.cfg.AI_THROTTLE_MULT = float(data['ai_throttle_update'])
-            #print(f'AI_THROTTLE_MULTIPLIER: {self.cfg.AI_THROTTLE_MULT}')
             
         # Send updates to all WebSocket clients if there were changes
         if changes:
@@ -515,11 +514,12 @@ class WebFpv(Application):
 class CircuitAPI(RequestHandler):
 
     def initialize(self, 
-                   circuit: str = "Default Circuit",
-                   surface: str = "Dry") -> None:
+                   circuit: str = "Default",
+                   surface: str = "Dry",
+                   circuit_icon: str = None) -> None:
         self.circuit = circuit
         self.surface = surface
-        self.circuit_icon = None
+        self.circuit_icon = circuit_icon
 
     def get(self):
         data = {"current_circuit": self.circuit, "current_surface": self.surface, "circuit_icon": self.circuit_icon}
