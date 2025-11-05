@@ -514,16 +514,15 @@ class WebFpv(Application):
 
 class CircuitAPI(RequestHandler):
 
-
     def initialize(self, 
                    circuit: str = "Default Circuit",
                    surface: str = "Dry") -> None:
         self.circuit = circuit
         self.surface = surface
-
+        self.circuit_icon = None
 
     def get(self):
-        data = {"current_circuit": self.circuit, "current_surface": self.surface}
+        data = {"current_circuit": self.circuit, "current_surface": self.surface, "circuit_icon": self.circuit_icon}
         self.render("templates/vehicle.html", **data)
 
     def post(self):

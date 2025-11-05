@@ -61,7 +61,8 @@ var driveHandler = new function() {
       if (window.serverState) {
         state.circuit = window.serverState.circuit;
         state.surface = window.serverState.surface;
-        // circuit_icon will be updated via WebSocket if available
+        state.circuit_icon = window.serverState.circuit_icon;
+   
         // Update UI to reflect the initialized state
         updateUI();
       }
@@ -303,7 +304,7 @@ var driveHandler = new function() {
       
       // Update circuit image
       var circuitImageElement = $('#circuit_image');
-      
+
       // Check if we have blob data for the circuit icon
       if (state.circuit_icon) {
         // Use blob data - convert base64 to data URL if needed
