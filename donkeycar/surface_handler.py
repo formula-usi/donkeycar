@@ -56,7 +56,7 @@ def apply_wet_conditions(throttle, old_throttle):
 def apply_icy_conditions(throttle, old_throttle):
     """Simulate icy road conditions - very limited traction and delayed response"""
     # Severely reduced acceleration/deceleration on ice
-    max_throttle_change = 0.4
+    max_throttle_change = 0.95
     throttle_change = throttle - old_throttle
     
     # Very limited throttle changes to simulate lack of traction
@@ -64,8 +64,10 @@ def apply_icy_conditions(throttle, old_throttle):
         throttle_change = math.copysign(0.15, throttle_change)
     
     # Add unpredictability and sliding effects
-    noise = random.uniform(-0.1, 0.1)
-    
+    if throttle_change > 0:
+        noise = random.uniform(0, 0.2) if throttle != 0 else 0
+    elif throttle_change < 0:
+        noise = random.uniform(-0.2, 0) if throttle != 0 else 0
     # Simulate momentum - use throttle magnitude as proxy for "speed"
     momentum_factor = min(0.3, abs(old_throttle) * 0.5)
     
@@ -105,7 +107,7 @@ def apply_icy_steering(steering_angle, old_steering_angle):
         steering_change = math.copysign(min(abs(amplified_change), 0.8), steering_change)
     
     # Add significant unpredictability - ice patches, sliding
-    slide_noise = random.uniform(-0.15, 0.15)
+    slide_noise = random.uniform(-0.3, 0.3) 
     
     # Simulate delayed response
     response_delay = 0.7 * difficulty_factor
