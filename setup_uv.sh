@@ -381,6 +381,10 @@ while [[ $# -gt 0 ]]; do
             INSTALL_UV=true
             shift
             ;;
+        -i|--regenerate-toml)
+            REGENERATE_TOML=true
+            shift
+            ;;
         -h|--help)
             show_usage
             exit 0
@@ -417,6 +421,11 @@ fi
 
 # Create pyproject.toml if it doesn't exist
 if [[ ! -f "pyproject.toml" ]]; then
+    create_pyproject_toml
+fi
+
+# Create pyproject.toml if the flag is set
+if [[ "$REGENERATE_TOML" == true ]]; then
     create_pyproject_toml
 fi
 
