@@ -307,31 +307,11 @@ var driveHandler = new function() {
 
       // Check if we have blob data for the circuit icon
       if (state.circuit_icon) {
-        // Use blob data - convert base64 to data URL if needed
-        var imageSrc;
-        if (state.circuit_icon.startsWith('data:')) {
-          // Already a data URL
-          imageSrc = state.circuit_icon;
-        } else {
-          // Assume it's base64 data, convert to data URL
-          imageSrc = 'data:image/png;base64,' + state.circuit_icon;
-        }
-        circuitImageElement.attr('src', imageSrc);
+        circuitImageElement.attr('src', state.circuit_icon);
         circuitImageElement.attr('alt', state.circuit + ' Circuit');
         // Remove error handler since we're using blob data
         circuitImageElement.off('error');
-      } else {
-        // Fall back to file-based approach
-        var circuitImagePath = '/static/images/' + state.circuit + '_circuit.png';
-        circuitImageElement.attr('src', circuitImagePath);
-        circuitImageElement.attr('alt', state.circuit + ' Circuit');
-        
-        // Add error handling - fallback to default image if circuit-specific image doesn't exist
-        circuitImageElement.off('error').on('error', function() {
-          $(this).attr('src', '/static/images/default_circuit.png');
-          $(this).attr('alt', 'Default');
-        });
-      }
+      } 
       
       // Update surface display with color coding
       var surfaceElement = $('#surface_display');

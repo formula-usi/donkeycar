@@ -126,7 +126,7 @@ class LocalWebController(tornado.web.Application):
 
         self.circuit = "Default"
         self.surface = "Dry"
-        self.circuit_icon = "static/images/default_circuit.png"  # For blob image data
+        self.circuit_icon = "/static/images/default_circuit.png"  # For blob image data
 
         self.num_records = 0
         self.wsclients = []
