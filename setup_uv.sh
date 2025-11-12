@@ -203,7 +203,8 @@ pc = [
     "kivy",
     "pandas",
     "plotly",
-    "albumentations",
+    "albumentations==1.3.1",
+    "numpy<2",
     "opencv-python",
 ]
 
