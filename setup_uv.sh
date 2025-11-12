@@ -250,8 +250,8 @@ version = {attr = "donkeycar.__version__"}
 "*" = ["*.html", "*.ini", "*.txt", "*.kv"]
 
 # UV-specific configuration
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest",
     "pytest-cov", 
     "responses",
