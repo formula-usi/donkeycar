@@ -323,7 +323,7 @@ var driveHandler = new function() {
         surfaceColor = '#ff8c00'; // orange
       } else if (state.surface.toLowerCase() === 'wet') {
         surfaceColor = '#28a745'; // green
-      } else if (state.surface.toLowerCase() === 'frozen') {
+      } else if (state.surface.toLowerCase() === 'icy') {
         surfaceColor = '#87ceeb'; // light blue
       }
       surfaceElement.css('color', surfaceColor);

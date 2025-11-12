@@ -327,7 +327,7 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
         self.application.surface = data.get('surface', self.application.surface)
 
         new_throttle = compute_throttle(data.get('throttle', self.application.throttle), self.application.throttle, self.application.surface)
-        new_steering = compute_steering_angle(data.get('angle', self.application.angle), self.application.angle, self.application.surface)
+        new_steering = compute_steering_angle(data.get('angle', self.application.angle), data.get('throttle', self.application.throttle), self.application.angle, self.application.surface)
 
         self.application.angle = new_steering
         self.application.throttle = new_throttle
