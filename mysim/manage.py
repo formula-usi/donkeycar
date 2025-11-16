@@ -447,7 +447,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
     # Decide what inputs should change the car's steering and throttle
     # based on the choice of user or autopilot drive mode
     #
-    V.add(DriveMode(cfg.AI_THROTTLE_MULT),
+    V.add(DriveMode(cfg),
           inputs=['user/mode', 'user/angle', 'user/throttle',
                   'pilot/angle', 'pilot/throttle'],
           outputs=['steering', 'throttle'])
@@ -635,11 +635,11 @@ class ToggleRecording:
 
 
 class DriveMode:
-    def __init__(self, ai_throttle_mult=1.0):
+    def __init__(self, cfg):
         """
         :param ai_throttle_mult: scale throttle in autopilot mode
         """
-        self.ai_throttle_mult = ai_throttle_mult
+        self.cfg = cfg
 
     def run(self, mode,
             user_steering, user_throttle,
@@ -659,7 +659,7 @@ class DriveMode:
         elif mode == 'local_angle':
             return pilot_steering if pilot_steering else 0.0, user_throttle
         return (pilot_steering if pilot_steering else 0.0,
-               pilot_throttle * self.ai_throttle_mult if pilot_throttle else 0.0)
+               pilot_throttle * self.cfg.AI_THROTTLE_MULT if pilot_throttle else 0.0)
 
 
 class UserPilotCondition:
