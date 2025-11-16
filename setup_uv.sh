@@ -217,6 +217,12 @@ macos = [
     "plotly",
     "albumentations",
     "opencv-python",
+    "gym==0.22.0",
+]
+
+# Gym Donkey Car simulator dependencies (installed separately)
+gym-donkeycar = [
+    "gym==0.22.0",
 ]
 
 # Development dependencies
@@ -305,6 +311,20 @@ setup_uv_environment() {
                 print_warning "Failed to install extra: $extra"
             fi
         done
+    fi
+    
+    # Install gym-donkeycar if gym is requested or if platform is macos
+    if [[ "$extras_str" == *"gym-donkeycar"* ]] || [[ "$platform" == "macos" ]]; then
+        if [[ -d "gym-donkeycar" ]]; then
+            print_info "Installing local gym-donkeycar package..."
+            if uv pip install -e ./gym-donkeycar; then
+                print_status "gym-donkeycar installed successfully"
+            else
+                print_warning "Failed to install gym-donkeycar"
+            fi
+        else
+            print_warning "gym-donkeycar directory not found, skipping installation"
+        fi
     fi
     
     # Install TensorRT for PC platform (optional GPU optimization)
