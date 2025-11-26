@@ -59,7 +59,11 @@ detect_platform() {
             
         # Detect DGX Spark (ARM Neoverse + NVIDIA GPUs)
         elif [[ -f /etc/dgx-release ]] || grep -q 'DGX' /sys/class/dmi/id/product_name 2>/dev/null; then
-           echo "spark"
+            if [[ -f /.dockerenv ]]; then
+                echo "ngc"
+            else
+                echo "spark"
+            fi
         else
             echo "pc"
         fi
