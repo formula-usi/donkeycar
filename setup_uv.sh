@@ -58,9 +58,7 @@ detect_platform() {
             echo "ngc"
             
         # Detect DGX Spark (ARM Neoverse + NVIDIA GPUs)
-        elif [[ -f /proc/cpuinfo ]] && \
-           grep -qi "neoverse" /proc/cpuinfo && \
-           command -v nvidia-smi >/dev/null 2>&1; then
+        elif [[ -f /etc/dgx-release ]] || grep -q 'DGX' /sys/class/dmi/id/product_name 2>/dev/null; then
            echo "spark"
         else
             echo "pc"
@@ -86,7 +84,7 @@ check_uv() {
 
 # Function to install UV
 install_uv() {
-    print_info "Installing UV package manager..."
+    print_info "Installing UV package manager (default behavior)..."
     
     if command -v curl &> /dev/null; then
         print_info "Installing UV using the official installer..."
@@ -125,7 +123,7 @@ install_uv() {
 
 # Function to create pyproject.toml
 create_pyproject_toml() {
-    print_info "Creating pyproject.toml..."
+    print_info "Creating/Regenerating pyproject.toml (default behavior)..."
     
     cat > pyproject.toml << 'EOF'
 [build-system]
@@ -278,7 +276,7 @@ dev = [
 ]
 EOF
 
-    print_status "Created pyproject.toml"
+    print_status "Created/Regenerated pyproject.toml"
 }
 
 # Function to setup UV environment
@@ -361,15 +359,17 @@ show_usage() {
     echo "  -e, --extras EXTRAS         Additional extras (dev, torch)"
     echo "  -t, --tensorrt              Install TensorRT for GPU optimization (PC only)"
     echo "  --no-tensorrt               Skip TensorRT installation"
-    echo "  -i, --install-uv            Install UV if not present"
     echo "  -h, --help                  Show this help message"
     echo ""
+    echo "Default Behavior:"
+    echo "  * UV package manager will be installed if not present."
+    echo "  * pyproject.toml will be created/regenerated."
+    echo ""
     echo "Examples:"
-    echo "  $0                          # Auto-detect platform and setup"
+    echo "  $0                          # Auto-detect platform and setup (default behavior)"
     echo "  $0 -p pi                    # Force Raspberry Pi setup"
     echo "  $0 -e dev,torch             # Include development and PyTorch extras"
     echo "  $0 -p nano -e dev           # Jetson Nano with dev tools"
-    echo "  $0 -i                       # Install UV and setup environment"
     echo "  $0 -t                       # Setup with TensorRT (PC)"
     echo "  $0 --no-tensorrt            # Setup without TensorRT"
 }
@@ -387,7 +387,6 @@ validate_environment() {
 # Parse command line arguments
 PLATFORM=""
 EXTRAS=""
-INSTALL_UV=false
 INSTALL_TENSORRT="auto"
 
 while [[ $# -gt 0 ]]; do
@@ -406,14 +405,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-tensorrt)
             INSTALL_TENSORRT="no"
-            shift
-            ;;
-        -i|--install-uv)
-            INSTALL_UV=true
-            shift
-            ;;
-        -i|--regenerate-toml)
-            REGENERATE_TOML=true
             shift
             ;;
         -h|--help)
@@ -436,29 +427,15 @@ if ! validate_environment; then
     exit 1
 fi
 
-# Check/install UV
+# Check/install UV (Now default if not found)
 if ! check_uv; then
-    if [[ "$INSTALL_UV" == true ]]; then
-        if ! install_uv; then
-            exit 1
-        fi
-    else
-        print_error "UV is required but not installed"
-        print_info "Use -i/--install-uv to install it automatically"
-        print_info "Or install manually: https://docs.astral.sh/uv/getting-started/installation/"
+    if ! install_uv; then
         exit 1
     fi
 fi
 
-# Create pyproject.toml if it doesn't exist
-if [[ ! -f "pyproject.toml" ]]; then
-    create_pyproject_toml
-fi
-
-# Create pyproject.toml if the flag is set
-if [[ "$REGENERATE_TOML" == true ]]; then
-    create_pyproject_toml
-fi
+# Create pyproject.toml (Now default and always runs)
+create_pyproject_toml
 
 # Detect or use specified platform
 if [[ -z "$PLATFORM" ]]; then
