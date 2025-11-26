@@ -463,7 +463,7 @@ fi
 
 # Validate platform
 case $PLATFORM in
-    pi|nano|pc|macos)
+    pi|nano|pc|macos|ngc|spark)
         ;;
     *)
         print_error "Invalid platform: $PLATFORM"
