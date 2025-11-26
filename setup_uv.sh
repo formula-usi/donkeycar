@@ -222,7 +222,6 @@ pc = [
 
 # Nvidia GPU Container specific dependencies
 ngc = [
-    "tensorflow[and-cuda]==2.15.*",
     "matplotlib",
     "kivy",
     "pandas",
