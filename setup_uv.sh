@@ -220,6 +220,18 @@ pc = [
     "opencv-python",
 ]
 
+# Nvidia GPU Container specific dependencies
+ngc = [
+    "tensorflow[and-cuda]==2.15.*",
+    "matplotlib",
+    "kivy",
+    "pandas",
+    "plotly",
+    "albumentations==1.3.1",
+    "numpy<2",
+    "opencv-python",
+]
+
 # macOS specific dependencies
 macos = [
     "tensorflow-macos==2.15.*",
