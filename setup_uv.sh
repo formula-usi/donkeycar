@@ -52,6 +52,16 @@ detect_platform() {
         # Check for Jetson Nano
         elif [[ -f /proc/device-tree/model ]] && grep -qi "jetson" /proc/device-tree/model; then
             echo "nano"
+        # Detect NVIDIA NGC container
+        elif [[ -f /etc/nv_tegra_release ]] || \
+           (grep -qi "NVIDIA" /etc/os-release 2>/dev/null && grep -qi "NGC" /etc/os-release 2>/dev/null); then
+            echo "ngc"
+            
+        # Detect DGX Spark (ARM Neoverse + NVIDIA GPUs)
+        elif [[ -f /proc/cpuinfo ]] && \
+           grep -qi "neoverse" /proc/cpuinfo && \
+           command -v nvidia-smi >/dev/null 2>&1; then
+           echo "spark"
         else
             echo "pc"
         fi
