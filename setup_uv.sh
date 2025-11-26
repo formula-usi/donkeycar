@@ -314,6 +314,15 @@ setup_uv_environment() {
     print_info "Creating virtual environment..."
     uv venv --system-site-packages .venv
     
+    # Install global dependencies
+    # print_info "Installing donkeycar with global dependencies"
+    # if uv pip install -e ".[dependencies]"; then
+    #     print_status "Global dependencies installed successfully"
+    # else
+    #     print_error "Failed to install global dependencies"
+    #     return 1
+    # fi
+
     # Install the package with only the specified platform extras
     print_info "Installing donkeycar with platform dependencies for: $platform"
     if uv pip install -e ".[$platform]"; then
@@ -391,7 +400,7 @@ show_usage() {
 
 # Function to validate environment
 validate_environment() {
-    if [[ ! -d "donkeycar" ]] || [[ ! -f "setup.cfg" ]]; then
+    if [[ ! -d "donkeycar" ]]; then
         print_error "This doesn't appear to be a DonkeyCar project directory"
         print_info "Please run this script from the DonkeyCar project root"
         return 1

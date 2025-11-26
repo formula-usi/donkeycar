@@ -31,3 +31,4 @@ tb_logs
 uv.lock
 .venv/
 mysim/data/*
+macchinina/data/*

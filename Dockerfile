@@ -1,29 +1,27 @@
-FROM python:3.6
+FROM nvcr.io/nvidia/tensorflow:24.05-tf2-py3
 
-WORKDIR /app
+ARG USERNAME
+ARG USER_UID
+ARG USER_GID
 
-# install donkey with tensorflow (cpu only version)
-ADD ./setup.py /app/setup.py
-ADD ./README.md /app/README.md
-RUN pip install -e .[tf]
+# Create the user
+RUN groupadd --gid $USER_GID $USERNAME 
+RUN useradd --uid $USER_UID --gid $USER_GID -m $USERNAME 
 
-# get testing requirements
-RUN pip install -e .[dev]
+# Add sudo support. Omit if you don't need to install software after connecting.
+RUN apt-get update \
+    && apt-get install -y sudo \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME
 
-# setup jupyter notebook to run without password
-RUN pip install jupyter notebook
-RUN jupyter notebook --generate-config
-RUN echo "c.NotebookApp.password = ''">>/root/.jupyter/jupyter_notebook_config.py
-RUN echo "c.NotebookApp.token = ''">>/root/.jupyter/jupyter_notebook_config.py
+USER $USERNAME
+WORKDIR /home/$USERNAME
 
-# add the whole app dir after install so the pip install isn't updated when code changes.
-ADD . /app
+COPY donkeycar donkeycar
+COPY setup_uv.sh .
 
-#start the jupyter notebook
-CMD jupyter notebook --no-browser --ip 0.0.0.0 --port 8888 --allow-root  --notebook-dir=/app/notebooks
+RUN ./setup_uv.sh
 
-#port for donkeycar
-EXPOSE 8887
-
-#port for jupyter notebook
-EXPOSE 8888
+RUN echo "source .venv/bin/activate" >> /home/$USERNAME/.bashrc
+RUN echo 'alias hasgpu="python -c '\''import tensorflow as tf; print(tf.config.list_physical_devices(\"GPU\"))'\''"' \
+    >> /home/$USERNAME/.bashrc
