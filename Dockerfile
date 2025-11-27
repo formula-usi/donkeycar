@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/tensorflow:24.05-tf2-py3
+FROM nvcr.io/nvidia/tensorflow:25.01-tf2-py3
 
 ARG USERNAME
 ARG USER_UID
@@ -20,7 +20,7 @@ WORKDIR /home/$USERNAME
 COPY donkeycar donkeycar
 COPY setup_uv.sh .
 
-RUN ./setup_uv.sh
+RUN ./setup_uv.sh --platform ngc
 
 RUN echo "source .venv/bin/activate" >> /home/$USERNAME/.bashrc
 RUN echo 'alias hasgpu="python -c '\''import tensorflow as tf; print(tf.config.list_physical_devices(\"GPU\"))'\''"' \

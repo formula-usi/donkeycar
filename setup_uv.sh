@@ -191,7 +191,7 @@ pi = [
     "adafruit-circuitpython-ssd1306",
     "adafruit-circuitpython-rplidar",
     "RPi.GPIO",
-    "tensorflow-aarch64==2.15.*",
+    "tensorflow-aarch64==2.16.*",
     "opencv-contrib-python",
 ]
 
@@ -210,7 +210,7 @@ nano = [
 
 # PC (Linux/Windows) specific dependencies
 pc = [
-    "tensorflow[and-cuda]==2.15.*",
+    "tensorflow[and-cuda]==2.17.*",
     "matplotlib",
     "kivy",
     "pandas",
@@ -233,7 +233,7 @@ ngc = [
 
 # macOS specific dependencies
 macos = [
-    "tensorflow-macos==2.15.*",
+    "tensorflow-macos==2.17.*",
     "matplotlib",
     "kivy",
     "pandas",
@@ -312,16 +312,20 @@ setup_uv_environment() {
     
     # Create virtual environment
     print_info "Creating virtual environment..."
-    uv venv --system-site-packages .venv
+    if [[ "$platform" == "ngc" ]]; then
+        uv venv .venv --system-site-packages  --python=/usr/bin/python3.11
+    else
+        uv venv .venv --system-site-packages
+    fi
     
     # Install global dependencies
-    # print_info "Installing donkeycar with global dependencies"
-    # if uv pip install -e ".[dependencies]"; then
-    #     print_status "Global dependencies installed successfully"
-    # else
-    #     print_error "Failed to install global dependencies"
-    #     return 1
-    # fi
+    print_info "Installing donkeycar with global dependencies"
+    if uv pip install -e ".[dependencies]"; then
+        print_status "Global dependencies installed successfully"
+    else
+        print_error "Failed to install global dependencies"
+        return 1
+    fi
 
     # Install the package with only the specified platform extras
     print_info "Installing donkeycar with platform dependencies for: $platform"

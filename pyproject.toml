@@ -59,7 +59,7 @@ pi = [
     "adafruit-circuitpython-ssd1306",
     "adafruit-circuitpython-rplidar",
     "RPi.GPIO",
-    "tensorflow-aarch64==2.15.*",
+    "tensorflow-aarch64==2.16.*",
     "opencv-contrib-python",
 ]
 
@@ -78,7 +78,18 @@ nano = [
 
 # PC (Linux/Windows) specific dependencies
 pc = [
-    "tensorflow[and-cuda]==2.15.*",
+    "tensorflow[and-cuda]==2.17.*",
+    "matplotlib",
+    "kivy",
+    "pandas",
+    "plotly",
+    "albumentations==1.3.1",
+    "numpy<2",
+    "opencv-python",
+]
+
+# Nvidia GPU Container specific dependencies
+ngc = [
     "matplotlib",
     "kivy",
     "pandas",
@@ -90,13 +101,19 @@ pc = [
 
 # macOS specific dependencies
 macos = [
-    "tensorflow-macos==2.15.*",
+    "tensorflow-macos==2.17.*",
     "matplotlib",
     "kivy",
     "pandas",
     "plotly",
     "albumentations",
     "opencv-python",
+    "gym==0.22.0",
+]
+
+# Gym Donkey Car simulator dependencies (installed separately)
+gym-donkeycar = [
+    "gym==0.22.0",
 ]
 
 # Development dependencies
