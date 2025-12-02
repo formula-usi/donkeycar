@@ -38,7 +38,7 @@ USER $USERNAME
 WORKDIR /home/$USERNAME
 COPY donkeycar donkeycar
 COPY setup_uv.sh .
-
+COPY pyproject.toml .
 RUN ./setup_uv.sh --platform ngc
 
 RUN echo "source .venv/bin/activate" >> /home/$USERNAME/.bashrc
