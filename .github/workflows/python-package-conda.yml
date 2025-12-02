@@ -18,10 +18,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Create python 3.11 conda env
+      - name: Create python conda env
         uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: 3.11
+          python-version: 3.10
           mamba-version: "*"
           activate-environment: donkey
           auto-activate-base: false

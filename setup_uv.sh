@@ -125,174 +125,7 @@ install_uv() {
     return 1
 }
 
-# Function to create pyproject.toml
-create_pyproject_toml() {
-    print_info "Creating/Regenerating pyproject.toml (default behavior)..."
-    
-    cat > pyproject.toml << 'EOF'
-[build-system]
-requires = ["setuptools>=64", "wheel"]
-build-backend = "setuptools.build_meta"
 
-[project]
-name = "donkeycar"
-dynamic = ["version"]
-description = "Self driving library for python."
-readme = "README.md"
-requires-python = ">=3.11,<3.12"
-license = {text = "MIT"}
-authors = [
-    {name = "Will Roscoe"},
-    {name = "Adam Conway"},
-    {name = "Tawn Kramer"},
-]
-keywords = ["selfdriving", "cars", "donkeycar", "diyrobocars"]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Programming Language :: Python :: 3.11",
-    "License :: OSI Approved :: MIT License",
-]
-
-# Core dependencies that work across all platforms
-dependencies = [
-    "numpy",
-    "pillow",
-    "docopt",
-    "tornado",
-    "requests",
-    "PrettyTable",
-    "paho-mqtt",
-    "simple_pid",
-    "progress",
-    "pyfiglet",
-    "psutil",
-    "pynmea2",
-    "pyserial",
-    "utm",
-    "pandas",
-    "pyyaml",
-]
-
-[project.urls]
-Homepage = "https://github.com/autorope/donkeycar"
-Repository = "https://github.com/autorope/donkeycar"
-Issues = "https://github.com/autorope/donkeycar/issues"
-
-[project.scripts]
-donkey = "donkeycar.management.base:execute_from_command_line"
-
-[project.optional-dependencies]
-# Raspberry Pi specific dependencies
-pi = [
-    "picamera2",
-    "Adafruit_PCA9685",
-    "adafruit-circuitpython-ssd1306",
-    "adafruit-circuitpython-rplidar",
-    "RPi.GPIO",
-    "tensorflow-aarch64==2.16.*",
-    "opencv-contrib-python",
-]
-
-# Jetson Nano specific dependencies
-nano = [
-    "Adafruit_PCA9685",
-    "adafruit-circuitpython-ssd1306",
-    "adafruit-circuitpython-rplidar",
-    "Jetson.GPIO",
-    "numpy==1.23.*",
-    "matplotlib==3.7.*",
-    "kivy",
-    "plotly",
-    "pandas==2.0.*",
-]
-
-# PC (Linux/Windows) specific dependencies
-pc = [
-    "tensorflow[and-cuda]==2.17.*",
-    "matplotlib",
-    "kivy",
-    "pandas",
-    "plotly",
-    "albumentations==1.3.1",
-    "numpy<2",
-    "opencv-python",
-]
-
-# Nvidia GPU Container specific dependencies
-ngc = [
-    "matplotlib",
-    "kivy",
-    "pandas",
-    "plotly",
-    "albumentations==1.3.1",
-    "numpy<2",
-    "opencv-python",
-]
-
-# macOS specific dependencies
-macos = [
-    "tensorflow-macos==2.17.*",
-    "matplotlib",
-    "kivy",
-    "pandas",
-    "plotly",
-    "albumentations",
-    "opencv-python",
-    "gym==0.22.0",
-]
-
-# Gym Donkey Car simulator dependencies (installed separately)
-gym-donkeycar = [
-    "gym==0.22.0",
-]
-
-# Development dependencies
-dev = [
-    "pytest",
-    "pytest-cov",
-    "responses",
-    "mypy",
-    "black",
-    "isort",
-    "flake8",
-]
-
-# PyTorch dependencies (cross-platform)
-torch = [
-    "torch==2.1.*",
-    "pytorch-lightning",
-    "torchvision",
-    "torchaudio",
-    "fastai",
-]
-
-[tool.setuptools]
-packages = ["donkeycar"]
-include-package-data = true
-
-[tool.setuptools.dynamic]
-version = {attr = "donkeycar.__version__"}
-
-[tool.setuptools.package-data]
-"*" = ["*.html", "*.ini", "*.txt", "*.kv"]
-
-# UV-specific configuration
-[dependency-groups]
-dev = [
-    "pytest",
-    "pytest-cov", 
-    "responses",
-    "mypy",
-    "black",
-    "isort",
-    "flake8",
-]
-EOF
-
-    print_status "Created/Regenerated pyproject.toml"
-}
 
 # Function to setup UV environment
 setup_uv_environment() {
@@ -312,24 +145,12 @@ setup_uv_environment() {
     
     # Create virtual environment
     print_info "Creating virtual environment..."
-    if [[ "$platform" == "ngc" ]]; then
-        uv venv .venv --system-site-packages  --python=/usr/bin/python3.11
-    else
-        uv venv .venv --system-site-packages
-    fi
-    
-    # Install global dependencies
-    print_info "Installing donkeycar with global dependencies"
-    if uv pip install -e ".[dependencies]"; then
-        print_status "Global dependencies installed successfully"
-    else
-        print_error "Failed to install global dependencies"
-        return 1
-    fi
 
-    # Install the package with only the specified platform extras
+    uv venv .venv --python 3.10
+    
+    # Install the package with platform-specific extras (includes core dependencies)
     print_info "Installing donkeycar with platform dependencies for: $platform"
-    if uv pip install -e ".[$platform]"; then
+    if uv pip install -p .venv -e ".[$platform]"; then
         print_status "Platform dependencies installed successfully"
     else
         print_error "Failed to install platform dependencies"
@@ -341,7 +162,7 @@ setup_uv_environment() {
         IFS=',' read -ra EXTRA_ARRAY <<< "$extras"
         for extra in "${EXTRA_ARRAY[@]}"; do
             print_info "Installing extra: $extra"
-            if uv pip install -e ".[$extra]"; then
+            if uv pip install -p .venv -e ".[$extra]"; then
                 print_status "Extra '$extra' installed successfully"
             else
                 print_warning "Failed to install extra: $extra"
@@ -353,7 +174,7 @@ setup_uv_environment() {
     if [[ "$extras_str" == *"gym-donkeycar"* ]] || [[ "$platform" == "macos" ]]; then
         if [[ -d "gym-donkeycar" ]]; then
             print_info "Installing local gym-donkeycar package..."
-            if uv pip install -e ./gym-donkeycar; then
+            if uv pip install -p .venv -e ./gym-donkeycar; then
                 print_status "gym-donkeycar installed successfully"
             else
                 print_warning "Failed to install gym-donkeycar"
@@ -389,9 +210,6 @@ show_usage() {
     echo "  --no-tensorrt               Skip TensorRT installation"
     echo "  -h, --help                  Show this help message"
     echo ""
-    echo "Default Behavior:"
-    echo "  * UV package manager will be installed if not present."
-    echo "  * pyproject.toml will be created/regenerated."
     echo ""
     echo "Examples:"
     echo "  $0                          # Auto-detect platform and setup (default behavior)"
@@ -462,8 +280,6 @@ if ! check_uv; then
     fi
 fi
 
-# Create pyproject.toml (Now default and always runs)
-create_pyproject_toml
 
 # Detect or use specified platform
 if [[ -z "$PLATFORM" ]]; then
@@ -487,7 +303,7 @@ esac
 # Show environment info
 print_header "Environment Configuration:"
 echo "  Platform: $PLATFORM"
-echo "  Python: 3.11"
+echo "  Python: 3.10"
 if [[ -n "$EXTRAS" ]]; then
     echo "  Extras: $EXTRAS"
 fi

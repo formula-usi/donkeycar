@@ -7,8 +7,8 @@ name = "donkeycar"
 dynamic = ["version"]
 description = "Self driving library for python."
 readme = "README.md"
-requires-python = ">=3.11,<3.12"
-license = {text = "MIT"}
+requires-python = ">=3.10,<3.11"
+license = "MIT"
 authors = [
     {name = "Will Roscoe"},
     {name = "Adam Conway"},
@@ -19,8 +19,7 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Programming Language :: Python :: 3.11",
-    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
 ]
 
 # Core dependencies that work across all platforms
@@ -52,6 +51,7 @@ Issues = "https://github.com/autorope/donkeycar/issues"
 donkey = "donkeycar.management.base:execute_from_command_line"
 
 [project.optional-dependencies]
+
 # Raspberry Pi specific dependencies
 pi = [
     "picamera2",
@@ -59,7 +59,7 @@ pi = [
     "adafruit-circuitpython-ssd1306",
     "adafruit-circuitpython-rplidar",
     "RPi.GPIO",
-    "tensorflow-aarch64==2.16.*",
+    "tensorflow-aarch64==2.15.*",
     "opencv-contrib-python",
 ]
 
@@ -78,7 +78,7 @@ nano = [
 
 # PC (Linux/Windows) specific dependencies
 pc = [
-    "tensorflow[and-cuda]==2.17.*",
+    "tensorflow[and-cuda]==2.15.*",
     "matplotlib",
     "kivy",
     "pandas",
@@ -101,7 +101,7 @@ ngc = [
 
 # macOS specific dependencies
 macos = [
-    "tensorflow-macos==2.17.*",
+    "tensorflow-macos==2.15.*",
     "matplotlib",
     "kivy",
     "pandas",
@@ -111,9 +111,17 @@ macos = [
     "gym==0.22.0",
 ]
 
+# DGX / Spark-like environments
+spark = [
+    "tensorflow==2.15.*",
+    "numpy<2",
+    "opencv-python",
+]
+
 # Gym Donkey Car simulator dependencies (installed separately)
-gym-donkeycar = [
+"gym-donkeycar" = [
     "gym==0.22.0",
+    "gym-donkeycar"
 ]
 
 # Development dependencies
@@ -150,7 +158,7 @@ version = {attr = "donkeycar.__version__"}
 [dependency-groups]
 dev = [
     "pytest",
-    "pytest-cov", 
+    "pytest-cov",
     "responses",
     "mypy",
     "black",
