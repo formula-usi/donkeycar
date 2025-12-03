@@ -145,7 +145,13 @@ setup_uv_environment() {
     
     # Create virtual environment
     print_info "Creating virtual environment..."
-    uv venv .venv --python 3.10 --system-site-packages
+    if [[ "$platform" == "ngc"* ]]; then
+        print_info "Platform is NGC: forcing Python 3.10"
+        uv venv .venv --python 3.10 --system-site-packages
+    else
+        print_info "Platform is $platform: using Python 3.11"
+        uv venv .venv --python 3.11 --system-site-packages
+    fi
     
     # Install the package with platform-specific extras (includes core dependencies)
     print_info "Installing donkeycar with platform dependencies for: $platform"
@@ -302,7 +308,11 @@ esac
 # Show environment info
 print_header "Environment Configuration:"
 echo "  Platform: $PLATFORM"
-echo "  Python: 3.10"
+if [[ "$PLATFORM" == "ngc"* ]]; then
+    echo "  Python: 3.10"
+else
+    echo "  Python: 3.11"
+fi
 if [[ -n "$EXTRAS" ]]; then
     echo "  Extras: $EXTRAS"
 fi

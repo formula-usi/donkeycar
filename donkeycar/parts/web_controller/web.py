@@ -521,6 +521,16 @@ class CircuitAPI(RequestHandler):
         self.surface = surface
         self.circuit_icon = circuit_icon
 
+    def set_default_headers(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "*")
+        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+    
+    def options(self):
+        # no body
+        self.set_status(204)
+        self.finish()
+
     def get(self):
         data = {"current_circuit": self.circuit, "current_surface": self.surface, "circuit_icon": self.circuit_icon}
         self.render("templates/vehicle.html", **data)
