@@ -32,3 +32,4 @@ uv.lock
 .venv/
 mysim/data/*
 macchinina/data/*
+macchinina/models/*
