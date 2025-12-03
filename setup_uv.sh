@@ -52,11 +52,10 @@ detect_platform() {
         # Check for Jetson Nano
         elif [[ -f /proc/device-tree/model ]] && grep -qi "jetson" /proc/device-tree/model; then
             echo "nano"
-        # Detect NVIDIA NGC container
+        # Detect NVIDIA NGC Container
         elif [[ -f /etc/nv_tegra_release ]] || \
            (grep -qi "NVIDIA" /etc/os-release 2>/dev/null && grep -qi "NGC" /etc/os-release 2>/dev/null); then
             echo "ngc"
-            
         # Detect DGX Spark (ARM Neoverse + NVIDIA GPUs)
         elif [[ -f /etc/dgx-release ]] || grep -q 'DGX' /sys/class/dmi/id/product_name 2>/dev/null; then
             if [[ -f /.dockerenv ]]; then
@@ -133,8 +132,16 @@ setup_uv_environment() {
     local extras=${2:-""}
     local install_tensorrt=${3:-"auto"}
     
+    if [[ "$platform" == "spark" ]]; then
+        print_info "Setting up Nvidia NCG container for DGC Spark"
+        docker build --build-arg USERNAME=$USER --build-arg USER_UID=$(id -u) --build-arg USER_GID=$(id -g) -t phaenomena:1.0 . 
+        docker rm phaenomena
+        docker run --gpus all -it --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/macchinina,target=/home/formulausi/macchinina --name phaenomena phaenomena:1.0 /bin/bash
+        return 0
+    fi
+
     print_info "Setting up UV environment for platform: $platform"
-    
+
     # Build extras string
     local extras_str="$platform"
     if [[ -n "$extras" ]]; then
@@ -308,11 +315,8 @@ esac
 # Show environment info
 print_header "Environment Configuration:"
 echo "  Platform: $PLATFORM"
-if [[ "$PLATFORM" == "ngc"* ]]; then
-    echo "  Python: 3.10"
-else
-    echo "  Python: 3.11"
-fi
+echo "  $(python3 --version 2>&1)"
+
 if [[ -n "$EXTRAS" ]]; then
     echo "  Extras: $EXTRAS"
 fi
