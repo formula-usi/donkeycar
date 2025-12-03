@@ -145,11 +145,7 @@ setup_uv_environment() {
     
     # Create virtual environment
     print_info "Creating virtual environment..."
-    if [[ "$platform" == "ngc"* ]]; then
-        uv venv .venv --python 3.10 --system-site-packages
-    else
-        uv venv .venv --python 3.10
-    fi
+    uv venv .venv --python 3.10 --system-site-packages
     
     # Install the package with platform-specific extras (includes core dependencies)
     print_info "Installing donkeycar with platform dependencies for: $platform"
