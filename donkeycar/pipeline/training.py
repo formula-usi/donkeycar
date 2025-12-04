@@ -170,11 +170,16 @@ def train(cfg: Config, tub_paths: str, model: str = None,
     # and not on the kl.interpreter.model object directly. The reason is that
     # we want to convert the best model which is not the model in its current
     # state, but in the state it was saved the last time during training.
-    if getattr(cfg, 'CREATE_TF_LITE', True):
+    # Skip TFLite/TensorRT conversion for PyTorch/FastAI models
+    is_pytorch_model = 'fastai_' in model_type or ext == '.pt'
+    
+    if getattr(cfg, 'CREATE_TF_LITE', True) and not is_pytorch_model:
         tf_lite_model_path = f'{base_path}.tflite'
         keras_model_to_tflite(model_path, tf_lite_model_path)
+    elif is_pytorch_model:
+        logger.info(f'Skipping TFLite conversion for PyTorch model: {model_path}')
 
-    if getattr(cfg, 'CREATE_TENSOR_RT', False):
+    if getattr(cfg, 'CREATE_TENSOR_RT', False) and not is_pytorch_model:
         # convert .h5 model to .savedmodel, only if we are using h5 format
         if ext == '.h5':
             logger.info(f"Converting from .h5 to .savedmodel first")

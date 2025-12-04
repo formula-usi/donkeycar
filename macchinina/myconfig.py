@@ -24,3 +24,5 @@ AI_THROTTLE_MULT = 0.0                       # this multiplier will scale every 
 #USE_JOYSTICK_AS_DEFAULT = True              # When starting the manage.py it will not require a --js option to use the joystick
 #JOYSTICK_MAX_THROTTLE = 0.35                # Scalar multiplied with the throttle value to limit the maximum throttle
 #JOYSTICK_STEERING_SCALE = 1.0               # Scalar multiplied with the steering value to have a less sensitve steering
+
+MAX_EPOCHS = 20 

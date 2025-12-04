@@ -1,0 +1,1 @@
+python train.py --tub data --model models/torcione.pt --type fastai_linear

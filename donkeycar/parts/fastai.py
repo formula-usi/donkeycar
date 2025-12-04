@@ -157,11 +157,15 @@ class FastAiPilot(ABC):
         assert isinstance(self.interpreter, FastAIInterpreter)
         model = self.interpreter.model
 
-        dataLoader = DataLoaders.from_dsets(train_data, validation_data, bs=batch_size, shuffle=False)
-        # old way of enabling gpu now crashes with torch 2.1.*
-        # if torch.cuda.is_available():
-        #     dataLoader.cuda()
+        # Detect device and log info
+        use_cuda = torch.cuda.is_available()
+        logger.info(f"CUDA available: {use_cuda}")
+        if use_cuda:
+            logger.info(f"CUDA device: {torch.cuda.get_device_name(0)}")
 
+        # Create DataLoaders first (on CPU, data will be moved per batch)
+        # Use num_workers=0 to avoid multiprocessing issues with CUDA
+        dataLoader = DataLoaders.from_dsets(train_data, validation_data, bs=batch_size, shuffle=False, num_workers=0)
 
         callbacks = [
             EarlyStoppingCallback(monitor='valid_loss',
@@ -173,6 +177,14 @@ class FastAiPilot(ABC):
         ]
 
         self.learner = Learner(dataLoader, model, loss_func=self.loss, path=Path(model_path).parent)
+        
+        # Move learner to GPU after creation
+        if use_cuda:
+            self.learner.model = self.learner.model.cuda()
+            self.learner.dls = self.learner.dls.cuda()
+            logger.info("Learner moved to CUDA")
+        
+        logger.info(f"Learner device: {next(self.learner.model.parameters()).device}")
 
         logger.info(self.learner.summary())
         logger.info(self.learner.loss_func)

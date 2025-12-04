@@ -7,7 +7,7 @@ name = "donkeycar"
 dynamic = ["version"]
 description = "Self driving library for python."
 readme = "README.md"
-requires-python = ">=3.10,<3.12"
+requires-python = ">=3.11,<3.13"
 license = "MIT"
 authors = [
     {name = "Will Roscoe"},
@@ -97,6 +97,7 @@ ngc = [
     "albumentations==1.3.1",
     "numpy<2",
     "opencv-python",
+    "tensorflow==2.16.*",
 ]
 
 # macOS specific dependencies
@@ -136,9 +137,18 @@ dev = [
 ]
 
 # PyTorch dependencies (cross-platform)
-torch = [
-    "torch==2.1.*",
+torch_spark = [
+    "lightning",
     "pytorch-lightning",
+    "torchmetrics",
+    "torchvision",
+    "torchaudio",
+    "fastai",
+]
+
+torch = [
+    "torch",
+    "lightning",
     "torchvision",
     "torchaudio",
     "fastai",

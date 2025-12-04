@@ -133,11 +133,12 @@ setup_uv_environment() {
     local install_tensorrt=${3:-"auto"}
     
     if [[ "$platform" == "spark" ]]; then
-        print_info "Setting up Nvidia NCG container for DGC Spark"
+        print_info "Setting up NVIDIA NCG container for DGC Spark"
         docker build --build-arg USERNAME=$USER --build-arg USER_UID=$(id -u) --build-arg USER_GID=$(id -g) -t phaenomena:1.0 . 
         docker rm phaenomena
-        docker run --gpus all -it --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/macchinina,target=/home/formulausi/macchinina --name phaenomena phaenomena:1.0 /bin/bash
-        return 0
+        docker run --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -it --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/macchinina,target=/home/formulausi/macchinina --name phaenomena phaenomena:1.0 /bin/bash
+        # docker run --gpus all -it --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/macchinina,target=/home/formulausi/macchinina --name phaenomena phaenomena:1.0 /bin/bash
+        exit 0
     fi
 
     print_info "Setting up UV environment for platform: $platform"
@@ -153,8 +154,8 @@ setup_uv_environment() {
     # Create virtual environment
     print_info "Creating virtual environment..."
     if [[ "$platform" == "ngc"* ]]; then
-        print_info "Platform is NGC: forcing Python 3.10"
-        uv venv .venv --python 3.10 --system-site-packages
+        print_info "Platform is NGC: forcing Python 3.12"
+        uv venv .venv --python 3.12 --system-site-packages
     else
         print_info "Platform is $platform: using Python 3.11"
         uv venv .venv --python 3.11 --system-site-packages
@@ -173,11 +174,36 @@ setup_uv_environment() {
     if [[ -n "$extras" ]]; then
         IFS=',' read -ra EXTRA_ARRAY <<< "$extras"
         for extra in "${EXTRA_ARRAY[@]}"; do
-            print_info "Installing extra: $extra"
-            if uv pip install -p .venv -e ".[$extra]"; then
-                print_status "Extra '$extra' installed successfully"
+            if [[ "$extra" == "torch_spark" ]]; then
+                # Special handling for torch extra: preserve system PyTorch
+                print_info "Installing torch extra while preserving system PyTorch..."
+                print_info "Using system site-packages PyTorch (pre-compiled for GPU)"
+                
+                # Create an override file to make torch packages "empty" requirements
+                # This tells uv to not install these packages
+                OVERRIDE_FILE=$(mktemp --suffix=.txt)
+                cat > "$OVERRIDE_FILE" << 'EOF'
+torch ; sys_platform == "never"
+torchvision ; sys_platform == "never"
+torchaudio ; sys_platform == "never"
+EOF
+                
+                print_info "Installing pytorch-lightning and fastai (excluding torch packages)..."
+                if uv pip install -p .venv -e ".[torch]" --override "$OVERRIDE_FILE"; then
+                    print_status "Torch extra installed (system PyTorch preserved)"
+                else
+                    print_error "Failed to install torch extra"
+                    rm -f "$OVERRIDE_FILE"
+                    return 1
+                fi
+                rm -f "$OVERRIDE_FILE"
             else
-                print_warning "Failed to install extra: $extra"
+                print_info "Installing extra: $extra"
+                if uv pip install -p .venv -e ".[$extra]"; then
+                    print_status "Extra '$extra' installed successfully"
+                else
+                    print_warning "Failed to install extra: $extra"
+                fi
             fi
         done
     fi
@@ -222,6 +248,10 @@ show_usage() {
     echo "  --no-tensorrt               Skip TensorRT installation"
     echo "  -h, --help                  Show this help message"
     echo ""
+    echo "Notes:"
+    echo "  - When 'torch_spark' extra is specified, the script preserves system PyTorch"
+    echo "    (pre-compiled for GPU) and only installs torch-dependent packages"
+    echo "    without replacing the system torch, torchvision, or torchaudio."
     echo ""
     echo "Examples:"
     echo "  $0                          # Auto-detect platform and setup (default behavior)"
