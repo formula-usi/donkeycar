@@ -235,11 +235,10 @@ class FastAIInterpreter(Interpreter):
         logger.info(f'Loading model {model_path}')
         if torch.cuda.is_available():
             logger.info("using cuda for torch inference")
-            self.model = torch.load(model_path)
+            self.model = torch.load(model_path, weights_only=False)
         else:
             logger.info("cuda not available for torch inference")
-            self.model = torch.load(model_path, map_location=torch.device('cpu'))
-
+            self.model = torch.load(model_path, map_location=torch.device('cpu'), weights_only=False)
         logger.info(self.model)
         self.model.eval()
 
