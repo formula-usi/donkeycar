@@ -273,12 +273,14 @@ var driveHandler = new function() {
 
     function bindNipple(manager) {
       manager.on('start', function(evt, data) {
+        console.log('Joystick START event - initializing loop');
         rawJoystickAngle = 0
         rawJoystickThrottle = 0
         state.tele.user.angle = 0
         state.tele.user.throttle = 0
         state.recording = true
         joystickLoopRunning=true;
+        console.log(`joystickLoopRunning: ${joystickLoopRunning}, controlMode: ${state.controlMode}`);
         joystickLoop();
 
       }).on('end', function(evt, data) {
@@ -293,13 +295,10 @@ var driveHandler = new function() {
         //console.log(data)
         rawJoystickAngle = Math.max(Math.min(Math.cos(radian)/70*distance, 1), -1)
         rawJoystickThrottle = Math.max(Math.min(Math.sin(radian)/70*distance , 1), -1)
+        console.log(`Joystick MOVE - rawAngle: ${rawJoystickAngle.toFixed(2)}, rawThrottle: ${rawJoystickThrottle.toFixed(2)}`);
         
-        state.tele.user.angle = rawJoystickAngle
-        state.tele.user.throttle = limitedThrottle(rawJoystickThrottle)
-
-        if (state.tele.user.throttle < .001) {
-          state.tele.user.angle = 0
-        }
+        // Values will be applied in joystickLoop which calls postDrive
+        // This ensures maxThrottle changes take effect immediately
 
       });
     }
@@ -561,9 +560,19 @@ var driveHandler = new function() {
 
     // Send control updates to the server every .1 seconds.
     function joystickLoop () {
+       console.log(`joystickLoop CALLED - loopRunning: ${joystickLoopRunning}, controlMode: ${state.controlMode}`);
        setTimeout(function () {
+            console.log(`joystickLoop TIMEOUT FIRED`);
             // Recalculate throttle with current maxThrottle to handle real-time changes
             state.tele.user.throttle = limitedThrottle(rawJoystickThrottle)
+            state.tele.user.angle = rawJoystickAngle
+            
+            // Reset angle if throttle is too small
+            if (state.tele.user.throttle < .001) {
+              state.tele.user.angle = 0
+            }
+            
+            console.log(`JoystickLoop - raw: ${rawJoystickThrottle.toFixed(2)}, maxThrottle: ${state.maxThrottle.toFixed(2)}, limited: ${state.tele.user.throttle.toFixed(2)}`)
             
             postDrive()
 
