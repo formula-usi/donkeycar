@@ -115,9 +115,10 @@ var driveHandler = new function() {
 
       if (window.DeviceOrientationEvent) {
         window.addEventListener("deviceorientation", handleOrientation);
-        console.log("Browser supports device orientation, setting control mode to tilt.");
-        state.controlMode = 'tilt';
-        deviceOrientationLoop();
+        console.log("Browser supports device orientation.");
+        // Don't auto-switch to tilt mode - let user choose
+        // state.controlMode = 'tilt';
+        // deviceOrientationLoop();
       } else {
         console.log("Device Orientation not supported by browser, setting control mode to joystick.");
         state.controlMode = 'joystick';
@@ -274,6 +275,9 @@ var driveHandler = new function() {
     function bindNipple(manager) {
       manager.on('start', function(evt, data) {
         console.log('Joystick START event - initializing loop');
+        // Automatically switch to joystick mode when touched
+        state.controlMode = 'joystick';
+        updateUI(); // Update the UI to reflect the mode change
         rawJoystickAngle = 0
         rawJoystickThrottle = 0
         state.tele.user.angle = 0
@@ -284,6 +288,7 @@ var driveHandler = new function() {
         joystickLoop();
 
       }).on('end', function(evt, data) {
+        console.log('Joystick END event - stopping loop');
         joystickLoopRunning=false;
         brake()
 
