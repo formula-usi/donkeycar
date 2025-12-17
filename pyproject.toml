@@ -61,6 +61,11 @@ pi = [
     "RPi.GPIO",
     "tensorflow-aarch64==2.15.*",
     "opencv-contrib-python",
+    "torch==2.8.0",
+    "pytorch-lightning==2.6.0",
+    "torchvision==0.23.0",
+    "torchaudio",
+    "fastai==2.8.5",
 ]
 
 # Jetson Nano specific dependencies
@@ -139,19 +144,15 @@ dev = [
 # PyTorch dependencies (cross-platform)
 torch_spark = [
     "lightning",
-    "pytorch-lightning",
+    "pytorch-lightning==2.6.0",
     "torchmetrics",
     "torchvision",
     "torchaudio",
-    "fastai",
+    "fastai==2.8.5",
 ]
 
 torch = [
-    "torch",
-    "lightning",
-    "torchvision",
-    "torchaudio",
-    "fastai",
+
 ]
 
 [tool.setuptools]
