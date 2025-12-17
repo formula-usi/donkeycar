@@ -25,4 +25,11 @@ AI_THROTTLE_MULT = 0.0                       # this multiplier will scale every 
 #JOYSTICK_MAX_THROTTLE = 0.35                # Scalar multiplied with the throttle value to limit the maximum throttle
 #JOYSTICK_STEERING_SCALE = 1.0               # Scalar multiplied with the steering value to have a less sensitve steering
 
-MAX_EPOCHS = 20 
+MAX_EPOCHS = 50 
+
+PRUNE_CNN = True               #This will remove weights from your model. The primary goal is to increase performance.
+LEARNING_RATE = 0.0015
+EARLY_STOP_PATIENCE = 10
+DEFAULT_MODEL_TYPE = 'fastai_linear'
+OPTIMIZER = "sgd"                #adam, sgd, rmsprop, etc.. None accepts default
+BATCH_SIZE = 128
