@@ -267,8 +267,14 @@ var driveHandler = new function() {
     };
 
 
+    // Store raw joystick values to allow recalculation when maxThrottle changes
+    var rawJoystickAngle = 0;
+    var rawJoystickThrottle = 0;
+
     function bindNipple(manager) {
       manager.on('start', function(evt, data) {
+        rawJoystickAngle = 0
+        rawJoystickThrottle = 0
         state.tele.user.angle = 0
         state.tele.user.throttle = 0
         state.recording = true
@@ -285,8 +291,11 @@ var driveHandler = new function() {
         distance = data['distance']
 
         //console.log(data)
-        state.tele.user.angle = Math.max(Math.min(Math.cos(radian)/70*distance, 1), -1)
-        state.tele.user.throttle = limitedThrottle(Math.max(Math.min(Math.sin(radian)/70*distance , 1), -1))
+        rawJoystickAngle = Math.max(Math.min(Math.cos(radian)/70*distance, 1), -1)
+        rawJoystickThrottle = Math.max(Math.min(Math.sin(radian)/70*distance , 1), -1)
+        
+        state.tele.user.angle = rawJoystickAngle
+        state.tele.user.throttle = limitedThrottle(rawJoystickThrottle)
 
         if (state.tele.user.throttle < .001) {
           state.tele.user.angle = 0
@@ -553,6 +562,9 @@ var driveHandler = new function() {
     // Send control updates to the server every .1 seconds.
     function joystickLoop () {
        setTimeout(function () {
+            // Recalculate throttle with current maxThrottle to handle real-time changes
+            state.tele.user.throttle = limitedThrottle(rawJoystickThrottle)
+            
             postDrive()
 
           if (joystickLoopRunning && state.controlMode == "joystick") {
