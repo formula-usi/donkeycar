@@ -144,16 +144,13 @@ dev = [
 # PyTorch dependencies (cross-platform)
 torch_spark = [
     "lightning",
-    "pytorch-lightning==2.6.0",
+    "pytorch-lightning",
     "torchmetrics",
     "torchvision",
     "torchaudio",
     "fastai==2.8.5",
 ]
 
-torch = [
-
-]
 
 [tool.setuptools]
 packages = ["donkeycar"]

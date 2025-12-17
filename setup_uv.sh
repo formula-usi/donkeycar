@@ -189,7 +189,7 @@ torchaudio ; sys_platform == "never"
 EOF
                 
                 print_info "Installing pytorch-lightning and fastai (excluding torch packages)..."
-                if uv pip install -p .venv -e ".[torch]" --override "$OVERRIDE_FILE"; then
+                if uv pip install -p .venv -e ".[torch_spark]" --override "$OVERRIDE_FILE"; then
                     print_status "Torch extra installed (system PyTorch preserved)"
                 else
                     print_error "Failed to install torch extra"
