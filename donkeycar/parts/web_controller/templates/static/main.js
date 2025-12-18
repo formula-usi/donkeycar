@@ -61,6 +61,10 @@ var driveHandler = new function() {
       if (window.serverState) {
         state.circuit = window.serverState.circuit;
         state.surface = window.serverState.surface;
+        state.maxThrottle = window.serverState.max_throttle;
+        state.throttleMode = window.serverState.throttle_mode;
+        state.straightThrottle = window.serverState.straight_throttle;
+        state.steerThrottle = window.serverState.steer_throttle;
         state.circuit_icon = window.serverState.circuit_icon;
    
         // Update UI to reflect the initialized state
@@ -485,7 +489,7 @@ var driveHandler = new function() {
         if(fields.length === 0) {
             fields = ALL_POST_FIELDS;
         }
-
+        console.log(state.tele.user.throttle);
         let data = {}
         fields.forEach(field => {
             switch (field) {
@@ -497,6 +501,10 @@ var driveHandler = new function() {
                 case 'ai_throttle_update': data['ai_throttle_update'] = state.aiThrottleMul; break;
                 case 'circuit': data['circuit'] = state.circuit; break;
                 case 'surface': data['surface'] = state.surface; break;
+                case 'max_throttle': data['max_throttle'] = state.maxThrottle; break;
+                case 'throttle_mode': data['throttle_mode'] = state.throttleMode; break;
+                case 'straight_throttle': data['straight_throttle'] = state.straightThrottle; break;
+                case 'steer_throttle': data['steer_throttle'] = state.steerThrottle; break;
                 case 'circuit_icon': data['circuit_icon'] = state.circuit_icon; break;
                 default: console.log(`Unexpected post field: '${field}'`); break;
             }

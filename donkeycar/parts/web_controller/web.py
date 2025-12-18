@@ -122,6 +122,7 @@ class LocalWebController(tornado.web.Application):
         self.recording_latch = None
         self.buttons = {}  # latched button values for processing
 
+
         self.port = port
 
         self.circuit = "Default"
@@ -312,8 +313,12 @@ def latch_buttons(buttons, pushes):
 
 
 class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
-    def initialize(self, cfg: Config):
+    def initialize(self, cfg: Config) -> None:
         self.cfg = cfg
+        self.application.max_throttle = 1.0
+        self.application.throttle_mode = "default"
+        self.application.straight_throttle = 1.0
+        self.application.steer_throttle = 1.0
     
     def check_origin(self, origin):
         return True
@@ -322,17 +327,79 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
         logger.info("New client connected")
         self.application.wsclients.append(self)
 
-    def on_message(self, message):
-        data = json.loads(message)
-        self.application.surface = data.get('surface', self.application.surface)
+    def limited_throttle(
+        self,
+        new_throttle,
+        max_throttle,
+        throttle_mode,
+        straight_throttle,
+        steer_throttle,
+        steer_angle
+    ):
+        print(new_throttle, max_throttle)
+        limited_throttle = 0
 
-        new_throttle = compute_throttle(data.get('throttle', self.application.throttle), self.application.throttle, self.application.surface)
-        new_steering = compute_steering_angle(data.get('angle', self.application.angle), data.get('throttle', self.application.throttle), self.application.angle, self.application.surface)
+        if new_throttle > 0:
+            limited_throttle = min(max_throttle, new_throttle)
+
+        if new_throttle < 0:
+            limited_throttle = max(-max_throttle, new_throttle)
+
+        if throttle_mode == "constant":
+            limited_throttle = max_throttle
+
+        if throttle_mode == "steer_limited":
+            # Interpolate between straight throttle and full steer throttle
+            steer_amount = abs(steer_angle)  # 0 to 1
+            max_allowed_throttle = (
+                straight_throttle +
+                (steer_throttle - straight_throttle) * steer_amount
+            )
+
+            if new_throttle > 0:
+                limited_throttle = min(max_allowed_throttle, new_throttle)
+            elif new_throttle < 0:
+                limited_throttle = max(-max_allowed_throttle, new_throttle)
+
+        return limited_throttle
+
+
+    def post(self):
+        '''
+        Receive post requests as user changes the circuit
+        and surface of the vehicle on the webpage
+        '''
+        data = tornado.escape.json_decode(self.request.body)
+        angle = data["angle"]
+        throttle = data["throttle"]
+        throttle = self.limited_throttle(
+            throttle,
+            self.application.max_throttle,
+            self.application.throttle_mode,
+            self.application.straight_throttle,
+            self.application.steer_throttle,
+            angle
+        )
+        new_throttle = compute_throttle(throttle, self.application.throttle, self.application.surface)
+        new_steering = compute_steering_angle(angle, throttle, self.application.angle, self.application.surface)
 
         self.application.angle = new_steering
         self.application.throttle = new_throttle
-        
-        # Track changes for broadcasting
+        self.write({"angle": new_steering, "throttle": new_throttle})
+
+    def on_message(self, message):
+        data = json.loads(message)
+        self.application.surface = data.get('surface', self.application.surface)
+        self.application.max_throttle = data.get('max_throttle', self.application.max_throttle)
+        self.application.throttle_mode = data.get('throttle_mode', self.application.throttle_mode)
+        self.application.straight_throttle = data.get('straight_throttle', self.application.straight_throttle)
+        self.application.steer_throttle = data.get('steer_throttle', self.application.steer_throttle)
+        self.application.angle = new_steering
+        self.application.throttle = new_throttle
+        new_throttle = compute_throttle(data.get('throttle', self.application.throttle), self.application.throttle, self.application.surface)
+        new_steering = compute_steering_angle(data.get('angle', self.application.angle), data.get('throttle', self.application.throttle), self.application.angle, self.application.surface)
+
+       
         changes = {}
         
         # Update circuit and track changes

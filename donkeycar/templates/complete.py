@@ -698,11 +698,10 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
     # This web controller will create a web server that is capable
     # of managing steering, throttle, and modes, and more.
     #
-    ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT, mode=cfg.WEB_INIT_MODE, cfg = cfg)
-    V.add(ctr,
-          inputs=[input_image, 'tub/num_records', 'user/mode', 'recording'],
-          outputs=['user/steering', 'user/throttle', 'user/mode', 'recording', 'web/buttons'],
-          threaded=True)
+
+    to_add = []
+    ctr = None
+    web_ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT, mode=cfg.WEB_INIT_MODE, cfg = cfg)
 
     #
     # also add a physical controller if one is configured
@@ -714,12 +713,13 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
         if cfg.CONTROLLER_TYPE == "pigpio_rc":  # an RC controllers read by GPIO pins. They typically don't have buttons
             from donkeycar.parts.controller import RCReceiver
             ctr = RCReceiver(cfg)
-            V.add(
-                ctr,
-                inputs=['user/mode', 'recording'],
-                outputs=['user/steering', 'user/throttle',
+            to_add.append({
+                "part":ctr, 
+                "inputs":['user/mode', 'recording'], 
+                "outputs":['user/steering', 'user/throttle',
                          'user/mode', 'recording'],
-                threaded=False)
+                "threaded":False})
+
         else:
             #
             # custom game controller mapping created with
@@ -749,14 +749,27 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
                 if cfg.USE_NETWORKED_JS:
                     from donkeycar.parts.controller import JoyStickSub
                     netwkJs = JoyStickSub(cfg.NETWORK_JS_SERVER_IP)
-                    V.add(netwkJs, threaded=True)
+                    to_add.append({
+                        "part":netwkJs,
+                        "threaded":True})
                     ctr.js = netwkJs
-            V.add(
-                ctr,
-                inputs=[input_image, 'user/mode', 'recording'],
-                outputs=['user/steering', 'user/throttle',
+            to_add.append({
+                "part":ctr, 
+                "inputs":[input_image, 'user/mode', 'recording'], 
+                "outputs":['user/steering', 'user/throttle',
                          'user/mode', 'recording'],
-                threaded=True)
+                "threaded":True})
+
+
+    V.add(web_ctr,
+        inputs=[input_image, 'tub/num_records', 'user/mode', 'recording'],
+        outputs=['user/steering', 'user/throttle', 'user/mode', 'recording', 'web/buttons'],
+        threaded=True)
+    if ctr == None:
+        ctr = web_ctr
+    for item in to_add:
+        V.add(**item)
+
     return ctr
 
 

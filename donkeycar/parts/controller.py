@@ -14,6 +14,7 @@ from donkeycar.parts.web_controller.web import WebFpv
 
 logger = logging.getLogger(__name__)
 
+import requests
 class Joystick(object):
     '''
     An interface to a physical joystick.
@@ -1176,6 +1177,30 @@ class JoystickController(object):
         self.running = False
         time.sleep(0.5)
 
+class JoystickControllerAPI(JoystickController):
+    '''
+    A Controller object that maps inputs to actions
+    This is used in management/joystic_api when mapping
+    a custom joystick via a web api.
+    '''
+    def __init__(self, *args, **kwargs):
+        super(JoystickControllerAPI, self).__init__(*args, **kwargs)
+
+
+    def run_threaded(self, img_arr=None, mode=None, recording=None):
+        angle, throttle, mode, recording = super().run_threaded(img_arr, mode, recording)
+        #do a post request to api with current joystick state
+        response = requests.post("http://localhost:8887/wsDrive", json = {
+            "angle": angle,
+            "throttle": throttle
+        }).json()
+
+        new_angle = response["angle"]
+        new_throttle = response["throttle"]
+        self.angle = float(new_angle)
+        self.throttle = float(new_throttle)
+        return self.angle, self.throttle, self.mode, self.recording
+
 
 class JoystickCreatorController(JoystickController):
     '''
@@ -1287,7 +1312,7 @@ class PS3JoystickSixAdController(PS3JoystickController):
             'left_stick_vert' : self.set_throttle,
         }
 
-class PS4JoystickController(JoystickController):
+class PS4JoystickController(JoystickControllerAPI):
     '''
     A Controller object that maps inputs to actions
     '''
