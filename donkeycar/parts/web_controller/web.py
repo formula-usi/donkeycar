@@ -363,7 +363,6 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
 
         return limited_throttle
 
-
     def post(self):
         '''
         Receive post requests as user changes the circuit
@@ -386,6 +385,9 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
         self.application.angle = new_steering
         self.application.throttle = new_throttle
         self.write({"angle": new_steering, "throttle": new_throttle})
+        changes = {"throttle": new_throttle, "angle": new_steering}
+        self.application.send_websocket_data(changes)
+
 
     def on_message(self, message):
         data = json.loads(message)
@@ -394,11 +396,10 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
         self.application.throttle_mode = data.get('throttle_mode', self.application.throttle_mode)
         self.application.straight_throttle = data.get('straight_throttle', self.application.straight_throttle)
         self.application.steer_throttle = data.get('steer_throttle', self.application.steer_throttle)
-        self.application.angle = new_steering
-        self.application.throttle = new_throttle
         new_throttle = compute_throttle(data.get('throttle', self.application.throttle), self.application.throttle, self.application.surface)
         new_steering = compute_steering_angle(data.get('angle', self.application.angle), data.get('throttle', self.application.throttle), self.application.angle, self.application.surface)
-
+        self.application.angle = new_steering
+        self.application.throttle = new_throttle
        
         changes = {}
         

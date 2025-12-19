@@ -19,7 +19,7 @@ var driveHandler = new function() {
         'session': 'None',
         'lag': 0,
         'controlMode': 'joystick',
-        'maxThrottle' : 1,
+        'maxThrottle' : 1.0,
         'throttleMode' : 'user',
         'straightThrottle' : 1.0,  // For steer_limited mode: throttle when going straight
         'steerThrottle' : 0.5,     // For steer_limited mode: throttle at full steering
@@ -59,13 +59,13 @@ var driveHandler = new function() {
     this.load = function() {
       // Initialize state with server-side values if available
       if (window.serverState) {
-        state.circuit = window.serverState.circuit;
-        state.surface = window.serverState.surface;
-        state.maxThrottle = window.serverState.max_throttle;
-        state.throttleMode = window.serverState.throttle_mode;
-        state.straightThrottle = window.serverState.straight_throttle;
-        state.steerThrottle = window.serverState.steer_throttle;
-        state.circuit_icon = window.serverState.circuit_icon;
+        if (window.serverState.circuit !== undefined) state.circuit = window.serverState.circuit;
+        if (window.serverState.surface !== undefined) state.surface = window.serverState.surface;
+        if (window.serverState.max_throttle !== undefined) state.maxThrottle = window.serverState.max_throttle;
+        if (window.serverState.throttle_mode !== undefined) state.throttleMode = window.serverState.throttle_mode;
+        if (window.serverState.straight_throttle !== undefined) state.straightThrottle = window.serverState.straight_throttle;
+        if (window.serverState.steer_throttle !== undefined) state.steerThrottle = window.serverState.steer_throttle;
+        if (window.serverState.circuit_icon !== undefined) state.circuit_icon = window.serverState.circuit_icon;
    
         // Update UI to reflect the initialized state
         updateUI();
@@ -278,7 +278,6 @@ var driveHandler = new function() {
 
     function bindNipple(manager) {
       manager.on('start', function(evt, data) {
-        console.log('Joystick START event - initializing loop');
         // Automatically switch to joystick mode when touched
         state.controlMode = 'joystick';
         updateUI(); // Update the UI to reflect the mode change
@@ -288,11 +287,9 @@ var driveHandler = new function() {
         state.tele.user.throttle = 0
         state.recording = true
         joystickLoopRunning=true;
-        console.log(`joystickLoopRunning: ${joystickLoopRunning}, controlMode: ${state.controlMode}`);
         joystickLoop();
 
       }).on('end', function(evt, data) {
-        console.log('Joystick END event - stopping loop');
         joystickLoopRunning=false;
         brake()
 
@@ -304,7 +301,6 @@ var driveHandler = new function() {
         //console.log(data)
         rawJoystickAngle = Math.max(Math.min(Math.cos(radian)/70*distance, 1), -1)
         rawJoystickThrottle = Math.max(Math.min(Math.sin(radian)/70*distance , 1), -1)
-        console.log(`Joystick MOVE - rawAngle: ${rawJoystickAngle.toFixed(2)}, rawThrottle: ${rawJoystickThrottle.toFixed(2)}`);
         
         // Values will be applied in joystickLoop which calls postDrive
         // This ensures maxThrottle changes take effect immediately
@@ -478,7 +474,7 @@ var driveHandler = new function() {
       }
     };
 
-    const ALL_POST_FIELDS = ['angle', 'throttle', 'drive_mode', 'recording', 'buttons'];
+    const ALL_POST_FIELDS = ['angle', 'throttle', 'drive_mode', 'recording', 'buttons', 'max_throttle', 'throttle_mode', 'straight_throttle', 'steer_throttle'];
 
     //
     // Set any changed properties to the server
@@ -584,8 +580,8 @@ var driveHandler = new function() {
             if (state.tele.user.throttle < .001) {
               state.tele.user.angle = 0
             }
-            
-            console.log(`JoystickLoop - raw: ${rawJoystickThrottle.toFixed(2)}, maxThrottle: ${state.maxThrottle.toFixed(2)}, limited: ${state.tele.user.throttle.toFixed(2)}`)
+            console.log(`${state.maxThrottle}`)
+            // console.log(`JoystickLoop - raw: ${rawJoystickThrottle.toFixed(2)}, maxThrottle: ${state.maxThrottle.toFixed(2)}, limited: ${state.tele.user.throttle.toFixed(2)}`)
             
             postDrive()
 
