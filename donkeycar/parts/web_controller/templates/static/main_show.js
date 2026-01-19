@@ -57,6 +57,7 @@ var driveHandler = new function() {
     var socket
 
     this.load = function() {
+      console.log('Dashboard main_show.js loading...');
       // Initialize state with server-side values if available
       if (window.serverState) {
         if (window.serverState.circuit !== undefined) state.circuit = window.serverState.circuit;
@@ -96,6 +97,18 @@ var driveHandler = new function() {
       
       // Expose socket globally for custom extensions
       window.donkeySocket = socket;
+      
+      socket.onopen = function() {
+        console.log('Dashboard WebSocket connected to /wsDrive');
+      };
+      
+      socket.onerror = function(error) {
+        console.error('Dashboard WebSocket error:', error);
+      };
+      
+      socket.onclose = function() {
+        console.log('Dashboard WebSocket closed');
+      };
 
       setBindings()
 
@@ -148,7 +161,7 @@ var driveHandler = new function() {
                 if(state.hasOwnProperty(key) && state[key] !== data[key]) {
                     if(typeof state[key] === 'object') {
                         // recursively update the state's object field
-                        changed = updateState(state[key], data[key]) && changed;
+                        changed = updateState(state[key], data[key]) || changed;
                     } else {
                         state[key] = data[key];
                         changed = true;
@@ -167,8 +180,12 @@ var driveHandler = new function() {
       //
       socket.onmessage = function (event) {
         const data = JSON.parse(event.data);
+        console.log('Dashboard received WebSocket data:', data);
         if(updateState(state, data)) {
+            console.log('Dashboard state updated, new angle:', state.tele.user.angle, 'new throttle:', state.tele.user.throttle);
             updateUI();
+        } else {
+            console.log('Dashboard state unchanged');
         }
       };
 
@@ -310,10 +327,15 @@ var driveHandler = new function() {
 
     var updateUI = function() {
 
+      console.log('New angle:', state.tele.user.angle, 'new throttle:', state.tele.user.throttle);
+
+
       $("#throttleInput").val(state.tele.user.throttle);
       $("#angleInput").val(state.tele.user.angle);
       $('#mode_select').val(state.driveMode);
       $('#circuit_display').text(state.circuit);
+      
+      console.log('Dashboard updateUI - angle:', state.tele.user.angle, 'throttle:', state.tele.user.throttle);
       
       // Update circuit image
       var circuitImageElement = $('#circuit_image');
@@ -365,7 +387,10 @@ var driveHandler = new function() {
       $('#steering_label').html(steeringRounded);
 
       // Update steering wheel rotation
-      $('#steering_wheel').css('transform', 'rotate(' + state.tele.user.angle * 180 / Math.PI + 'deg)').html(state.tele.user.angle * 180 / Math.PI);
+      // state.tele.user.angle is -1 to 1, so multiply by degrees for rotation
+      var rotationDegrees = state.tele.user.angle * 180 / Math.PI; // -180 to +180 degrees
+      console.log('Steering wheel rotation:', rotationDegrees, 'degrees (angle:', state.tele.user.angle, ')');
+      $('#steering_wheel').css('transform', 'rotate(' + rotationDegrees + 'deg)');
 
       if(state.tele.user.throttle < 0) {
         $('#throttle-bar-backward').css('width', throttlePercent).html(throttleRounded)
@@ -396,18 +421,22 @@ var driveHandler = new function() {
       // Update speedometer
       const gauge = document.getElementById('speedometer_gauge');
 
-      if (Math.abs(state.tele.user.throttle) > Math.abs(state.tele.pilot.throttle)) {
+      if (gauge) {
+        if (Math.abs(state.tele.user.throttle) > Math.abs(state.tele.pilot.throttle)) {
+          
+          const value = (Math.abs(state.tele.user.throttle) * 100).toFixed(0);
+          console.log('Speedometer update (user):', value, '% (throttle:', state.tele.user.throttle, ')');
+          $('#speedometer_score').html(value);
+          gauge.setAttribute('value', value);
         
-        const value = (Math.abs(state.tele.user.throttle) * 100).toFixed(0);
-        $('#speedometer_score').html(value);
-        gauge.setAttribute('value', value);
-      
-      } else {
+        } else {
+          
+          const value = (Math.abs(state.tele.pilot.throttle) * 100).toFixed(0);
+          console.log('Speedometer update (pilot):', value, '% (throttle:', state.tele.pilot.throttle, ')');
+          $('#speedometer_score').html(value);
+          gauge.setAttribute('value', value);
         
-        const value = (Math.abs(state.tele.pilot.throttle) * 100).toFixed(0);
-        $('#speedometer_score').html(value);
-        gauge.setAttribute('value', value);
-      
+        }
       }
 
       if (state.recording) {

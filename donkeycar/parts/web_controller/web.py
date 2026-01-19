@@ -114,6 +114,7 @@ class LocalWebController(tornado.web.Application):
 
         this_dir = os.path.dirname(os.path.realpath(__file__))
         self.static_file_path = os.path.join(this_dir, 'templates', 'static')
+        self.template_path = os.path.join(this_dir, 'templates')
         self.angle = 0.0
         self.throttle = 0.0
         self.mode = mode
@@ -140,6 +141,7 @@ class LocalWebController(tornado.web.Application):
         handlers = [
             (r"/", RedirectHandler, dict(url="/drive")),
             (r"/drive", DriveAPI, dict(ai_throttle_mul=self.cfg.AI_THROTTLE_MULT if self.cfg is not None else 0.0)),
+            (r"/dashboard", DashboardAPI),
             (r"/wsDrive", WebSocketDriveAPI, dict(cfg=self.cfg)),
             (r"/wsCalibrate", WebSocketCalibrateAPI),
             (r"/calibrate", CalibrateHandler),
@@ -391,6 +393,7 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
 
     def on_message(self, message):
         data = json.loads(message)
+        logger.info(f"WebSocket received from drive page: {message}")
         self.application.surface = data.get('surface', self.application.surface)
         self.application.max_throttle = data.get('max_throttle', self.application.max_throttle)
         self.application.throttle_mode = data.get('throttle_mode', self.application.throttle_mode)
@@ -400,8 +403,18 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
         new_steering = compute_steering_angle(data.get('angle', self.application.angle), data.get('throttle', self.application.throttle), self.application.angle, self.application.surface)
         self.application.angle = new_steering
         self.application.throttle = new_throttle
+        
+        logger.info(f"Computed values - angle: {new_steering}, throttle: {new_throttle}")
        
         changes = {}
+        
+        # Send angle and throttle updates to all connected clients in nested structure
+        if 'angle' in data or 'throttle' in data:
+            changes['tele'] = {'user': {}}
+            if 'angle' in data:
+                changes['tele']['user']['angle'] = new_steering
+            if 'throttle' in data:
+                changes['tele']['user']['throttle'] = new_throttle
         
         # Update circuit and track changes
         if data.get('circuit') is not None and self.application.circuit != data['circuit']:
@@ -431,6 +444,7 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
             
         # Send updates to all WebSocket clients if there were changes
         if changes:
+            logger.debug(f"Broadcasting changes to clients: {changes}")
             self.application.send_websocket_data(changes)
 
     def on_close(self):
@@ -579,6 +593,28 @@ class WebFpv(Application):
         pass
 
 
+class DashboardAPI(RequestHandler):
+    """Serves the dashboard web page using vehicle_show.html"""
+    
+    def get(self):
+        # Map surface to icon path
+        surface_icons = {
+            "Dry": "/static/weather/dry.png",
+            "Wet": "/static/weather/wet.png",
+            "Icy": "/static/weather/icy.png"
+        }
+        current_surface_icon = surface_icons.get(self.application.surface, "/static/weather/dry.png")
+        
+        data = {
+            "current_ai_mul": str(self.application.cfg.AI_THROTTLE_MULT if self.application.cfg is not None else 0.0),
+            "current_circuit": self.application.circuit,
+            "current_surface": self.application.surface,
+            "current_surface_icon": current_surface_icon,
+            "current_circuit_icon": self.application.circuit_icon
+        }
+        self.render("templates/vehicle_show.html", **data)
+
+
 class CircuitAPI(RequestHandler):
 
     def initialize(self, 
@@ -617,10 +653,18 @@ class CircuitAPI(RequestHandler):
         if data.get('surface') is not None:
             self.application.surface = data['surface']
             changes['surface'] = self.application.surface
+            # Also send the updated surface icon
+            surface_icons = {
+                "Dry": "/static/weather/dry.png",
+                "Wet": "/static/weather/wet.png",
+                "Icy": "/static/weather/icy.png"
+            }
+            changes['surface_icon'] = surface_icons.get(self.application.surface, "/static/weather/dry.png")
         if data.get('circuit_icon') is not None:
             self.application.circuit_icon = data['circuit_icon']
             changes['circuit_icon'] = self.application.circuit_icon
             
         # Send updates to WebSocket clients
         if changes:
+            logger.info(f"CircuitAPI broadcasting changes: {changes}")
             self.application.send_websocket_data(changes)

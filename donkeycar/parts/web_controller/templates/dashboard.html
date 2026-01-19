@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donkey Car Dashboard</title>
+    <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <header class="dashboard-header">
+            <h1>🏎️ Donkey Car Dashboard</h1>
+            <div class="header-actions">
+                <a href="/drive" class="btn btn-primary">Drive</a>
+                <a href="/calibrate" class="btn btn-secondary">Calibrate</a>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- Status Panel -->
+            <div class="dashboard-card">
+                <h3>Status</h3>
+                <div class="status-item">
+                    <span class="label">Mode:</span>
+                    <span id="mode" class="value">{{ mode }}</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Recording:</span>
+                    <span id="recording" class="value">{{ 'Yes' if recording else 'No' }}</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Records:</span>
+                    <span id="num_records" class="value">{{ num_records }}</span>
+                </div>
+            </div>
+
+            <!-- Environment Panel -->
+            <div class="dashboard-card">
+                <h3>Environment</h3>
+                <div class="status-item">
+                    <span class="label">Circuit:</span>
+                    <span id="circuit" class="value">{{ circuit }}</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Surface:</span>
+                    <span id="surface" class="value">{{ surface }}</span>
+                </div>
+            </div>
+
+            <!-- Video Feed -->
+            <div class="dashboard-card video-card">
+                <h3>Live Camera</h3>
+                <img id="video" src="/video" alt="Camera feed">
+            </div>
+
+            <!-- Metrics Panel -->
+            <div class="dashboard-card">
+                <h3>Real-time Metrics</h3>
+                <div class="metrics-container">
+                    <div class="metric">
+                        <div class="metric-label">Steering</div>
+                        <div id="steering-value" class="metric-value">0.0</div>
+                        <div class="metric-bar">
+                            <div id="steering-bar" class="metric-bar-fill"></div>
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Throttle</div>
+                        <div id="throttle-value" class="metric-value">0.0</div>
+                        <div class="metric-bar">
+                            <div id="throttle-bar" class="metric-bar-fill"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom Data Panel -->
+            <div class="dashboard-card">
+                <h3>Custom Values</h3>
+                <div id="custom-values" class="custom-values-container">
+                    <p class="text-muted">No custom data available</p>
+                </div>
+            </div>
+
+            <!-- Text Content Panel -->
+            <div class="dashboard-card">
+                <h3>Messages</h3>
+                <div id="text-content" class="text-content-container">
+                    <p class="text-muted">No messages</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/jquery-3.1.1.min.js"></script>
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>
