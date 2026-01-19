@@ -34,7 +34,9 @@ form {
 	margin-top:10px;
 }
 #control-bars {
-	margin-top:10px;
+    margin-top: 10px;
+    display: flex;
+	justify-content: space-between;
 }
 .group-label {
 	width:auto;
@@ -132,7 +134,30 @@ div.img-controls {
 body {
   /* Margin bottom by footer height */
   margin-bottom: 60px;
+  overflow: hidden;
 }
+
+.slider {
+	writing-mode: vertical-lr;
+	direction: rtl;
+}
+
+* {
+	margin: 0;
+	box-sizing: border-box;
+	--c1: #C1262C;
+	--c2: #DB5C23;
+	--c3: #F69220;
+	--c4: #8BA247;
+	--c5: #23B473;
+}
+
+.speedometer_gauge{
+	width: 500px;
+	height: 500px;
+	position: relative;
+}
+
 .footer {
   position: fixed;
   bottom: 0;
@@ -140,4 +165,9 @@ body {
   /* Set the fixed height of the footer here */
   height: 60px;
   background-color: #f5f5f5;
+}
+
+analog-gauge {
+    height: 200px;
+    aspect-ratio: 1;
 }
