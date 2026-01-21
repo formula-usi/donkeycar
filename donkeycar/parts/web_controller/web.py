@@ -137,12 +137,19 @@ class LocalWebController(tornado.web.Application):
         if self.cfg is not None:
             # Pass the config object for altering AI_THROTTLE_MULT
             self.DEFAULT_AI_THROTTLE_MULT = self.cfg.AI_THROTTLE_MULT
+        
+        # Initialize throttle-related attributes on the application
+        self.max_throttle = 1.0
+        self.throttle_mode = "default"
+        self.straight_throttle = 1.0
+        self.steer_throttle = 1.0
 
         handlers = [
             (r"/", RedirectHandler, dict(url="/drive")),
             (r"/drive", DriveAPI, dict(ai_throttle_mul=self.cfg.AI_THROTTLE_MULT if self.cfg is not None else 0.0)),
             (r"/dashboard", DashboardAPI),
             (r"/wsDrive", WebSocketDriveAPI, dict(cfg=self.cfg)),
+            (r"/api/drive", DrivePostAPI),  # Separate endpoint for POST requests from joystick
             (r"/wsCalibrate", WebSocketCalibrateAPI),
             (r"/calibrate", CalibrateHandler),
             (r"/video", VideoAPI),
@@ -314,21 +321,12 @@ def latch_buttons(buttons, pushes):
                 buttons[button] = True
 
 
-class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
-    def initialize(self, cfg: Config) -> None:
-        self.cfg = cfg
-        self.application.max_throttle = 1.0
-        self.application.throttle_mode = "default"
-        self.application.straight_throttle = 1.0
-        self.application.steer_throttle = 1.0
+class DrivePostAPI(RequestHandler):
+    '''
+    Handles POST requests from the joystick controller.
+    Separated from WebSocket handler to ensure proper application instance sharing.
+    '''
     
-    def check_origin(self, origin):
-        return True
-
-    def open(self):
-        logger.info("New client connected")
-        self.application.wsclients.append(self)
-
     def limited_throttle(
         self,
         new_throttle,
@@ -338,7 +336,6 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
         steer_throttle,
         steer_angle
     ):
-        print(new_throttle, max_throttle)
         limited_throttle = 0
 
         if new_throttle > 0:
@@ -367,18 +364,26 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
 
     def post(self):
         '''
-        Receive post requests as user changes the circuit
-        and surface of the vehicle on the webpage
+        Receive post requests from joystick controller
         '''
         data = tornado.escape.json_decode(self.request.body)
         angle = data["angle"]
         throttle = data["throttle"]
+        
+        # Get throttle parameters from application
+        max_throttle = self.application.max_throttle
+        throttle_mode = self.application.throttle_mode
+        straight_throttle = self.application.straight_throttle
+        steer_throttle = self.application.steer_throttle
+        
+        logger.info(f"POST received - max_throttle: {max_throttle}, throttle_mode: {throttle_mode}, app_id: {id(self.application)}")
+        
         throttle = self.limited_throttle(
             throttle,
-            self.application.max_throttle,
-            self.application.throttle_mode,
-            self.application.straight_throttle,
-            self.application.steer_throttle,
+            max_throttle,
+            throttle_mode,
+            straight_throttle,
+            steer_throttle,
             angle
         )
         new_throttle = compute_throttle(throttle, self.application.throttle, self.application.surface)
@@ -391,6 +396,17 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
         self.application.send_websocket_data(changes)
 
 
+class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
+    def initialize(self, cfg: Config) -> None:
+        self.cfg = cfg
+    
+    def check_origin(self, origin):
+        return True
+
+    def open(self):
+        logger.info(f"New WebSocket client connected - app_id: {id(self.application)}")
+        self.application.wsclients.append(self)
+
     def on_message(self, message):
         data = json.loads(message)
         logger.info(f"WebSocket received from drive page: {message}")
@@ -399,6 +415,9 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
         self.application.throttle_mode = data.get('throttle_mode', self.application.throttle_mode)
         self.application.straight_throttle = data.get('straight_throttle', self.application.straight_throttle)
         self.application.steer_throttle = data.get('steer_throttle', self.application.steer_throttle)
+        
+        logger.info(f"Updated application attributes - max_throttle: {self.application.max_throttle}, throttle_mode: {self.application.throttle_mode}, app_id: {id(self.application)}")
+        
         new_throttle = compute_throttle(data.get('throttle', self.application.throttle), self.application.throttle, self.application.surface)
         new_steering = compute_steering_angle(data.get('angle', self.application.angle), data.get('throttle', self.application.throttle), self.application.angle, self.application.surface)
         self.application.angle = new_steering

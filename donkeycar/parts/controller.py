@@ -1190,7 +1190,7 @@ class JoystickControllerAPI(JoystickController):
     def run_threaded(self, img_arr=None, mode=None, recording=None):
         angle, throttle, mode, recording = super().run_threaded(img_arr, mode, recording)
         #do a post request to api with current joystick state
-        response = requests.post("http://localhost:8887/wsDrive", json = {
+        response = requests.post("http://localhost:8887/api/drive", json = {
             "angle": angle,
             "throttle": throttle
         }).json()
