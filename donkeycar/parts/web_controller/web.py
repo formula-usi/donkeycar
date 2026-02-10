@@ -544,30 +544,44 @@ class VideoAPI(RequestHandler):
 
         served_image_timestamp = time.time()
         my_boundary = "--boundarydonotcross\n"
+        
+        last_img_id = None
+        
         while True:
-
-            interval = .005
+            # Reduce interval to 20 FPS (instead of 200 FPS)
+            interval = .05
+            
             if served_image_timestamp + interval < time.time():
-                #
-                # if we have an image, then use it.
-                # otherwise show placeholder
-                #
-                if hasattr(self.application, 'img_arr') and self.application.img_arr is not None:
-                    img = utils.arr_to_binary(self.application.img_arr)
-                else:
-                    img = utils.arr_to_binary(placeholder_image)
+            
+                current_img_arr = getattr(self.application, 'img_arr', None)
 
-                self.write(my_boundary)
-                self.write("Content-type: image/jpeg\r\n")
-                self.write("Content-length: %s\r\n\r\n" % len(img))
-                self.write(img)
-                served_image_timestamp = time.time()
-                try:
-                    await self.flush()
-                except tornado.iostream.StreamClosedError:
-                    pass
-            else:
-                await tornado.gen.sleep(interval)
+                if current_img_arr is not None and id(current_img_arr) != last_img_id:
+                
+                    img = utils.arr_to_binary(current_img_arr)
+                    last_img_id = id(current_img_arr)
+
+                    self.write(my_boundary)
+                    self.write("Content-type: image/jpeg\r\n")
+                    self.write("Content-length: %s\r\n\r\n" % len(img))
+                    self.write(img)
+                    served_image_timestamp = time.time()
+                    try:
+                        await self.flush()
+                    except tornado.iostream.StreamClosedError:
+                        break 
+                elif current_img_arr is None:
+                    img = utils.arr_to_binary(placeholder_image)
+                    self.write(my_boundary)
+                    self.write("Content-type: image/jpeg\r\n")
+                    self.write("Content-length: %s\r\n\r\n" % len(img))
+                    self.write(img)
+                    served_image_timestamp = time.time()
+                    try:
+                        await self.flush()
+                    except tornado.iostream.StreamClosedError:
+                        break
+
+            await tornado.gen.sleep(0.005)
 
 
 class BaseHandler(RequestHandler):
