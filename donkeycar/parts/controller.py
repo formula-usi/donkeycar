@@ -1243,15 +1243,15 @@ class JoystickControllerAPI(JoystickController):
             self.steer_throttle,
             angle
         )
-        new_throttle = compute_throttle(throttle, self.old_throttle, self.surface)
-        new_steering = compute_steering_angle(angle, throttle, self.old_angle, self.surface)
-        throttle = float(new_throttle) if abs(float(new_throttle)) > 0.1 else 0
-        angle = float(new_steering)
-        angle_to_print = float(new_steering) if abs(float(new_steering)) > 0.05 else 0
+        # new_throttle = compute_throttle(throttle, self.old_throttle, self.surface)
+        # new_steering = compute_steering_angle(angle, throttle, self.old_angle, self.surface)
+        throttle = float(throttle) if abs(float(throttle)) > 0.1 else 0
+        angle = float(angle)
+        # angle_to_print = float(new_steering) if abs(float(new_steering)) > 0.05 else 0
 
-        changes = {"throttle": throttle , "angle": angle_to_print}
-        if self.socket_update_fn is not None:
-            self.socket_update_fn(changes)
+        # changes = {"throttle": throttle , "angle": angle_to_print}
+        # if self.socket_update_fn is not None:
+        #     self.socket_update_fn(changes)
 
         self.recording = False if throttle == 0 else True
         self.old_throttle = throttle

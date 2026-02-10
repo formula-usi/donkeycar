@@ -249,7 +249,7 @@ class LocalWebController(tornado.web.Application):
         if (changes or custom_values is not None or text_content is not None) and self.loop is not None:
             self.loop.add_callback(lambda: self.update_wsclients(changes))
 
-        return self.angle, self.throttle, self.mode, self.recording, buttons
+        return self.angle, self.throttle, self.mode, self.recording, self.surface, buttons
 
     def run(self, img_arr=None, num_records=0, mode=None, recording=None, custom_values=None, text_content=None):
         return self.run_threaded(img_arr, num_records, mode, recording, custom_values, text_content)

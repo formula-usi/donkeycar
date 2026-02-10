@@ -35,6 +35,10 @@ from donkeycar.parts.throttle_filter import ThrottleFilter
 from donkeycar.parts.behavior import BehaviorPart
 from donkeycar.parts.file_watcher import FileWatcher
 from donkeycar.parts.launch import AiLaunch
+from donkeycar.parts.dashboard_updater import DashboardUpdater
+from donkeycar.parts.speed_limiter import SpeedLimiter
+from donkeycar.parts.weather_applier import WeatherApplier
+
 from donkeycar.parts.kinematics import NormalizeSteeringAngle, UnnormalizeSteeringAngle, TwoWheelSteeringThrottle
 from donkeycar.parts.kinematics import Unicycle, InverseUnicycle, UnicycleUnnormalizeAngularVelocity
 from donkeycar.parts.kinematics import Bicycle, InverseBicycle, BicycleUnnormalizeAngularVelocity
@@ -130,7 +134,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
     # - it will optionally add any configured 'joystick' controller
     #
     has_input_controller = hasattr(cfg, "CONTROLLER_TYPE") and cfg.CONTROLLER_TYPE != "mock"
-    ctr = add_user_controller(V, cfg, use_joystick)
+    ctr, socket_update_fn = add_user_controller(V, cfg, use_joystick)
 
     #
     # convert 'user/steering' to 'user/angle' to be backward compatible with deep learning data
@@ -315,7 +319,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
         #
         model_reload_cb = None
         if '.h5' in model_path or '.trt' in model_path or '.tflite' in \
-            model_path or '.savedmodel' in model_path or '.pth' in model_path:
+            model_path or '.savedmodel' in model_path or '.pth' in model_path or '.pt' in model_path:
             # load the whole model with weigths, etc
             load_model(kl, model_path)
 
@@ -447,11 +451,14 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
     # Decide what inputs should change the car's steering and throttle
     # based on the choice of user or autopilot drive mode
     #
+
+    # V.add(SpeedLimiter)
     V.add(DriveMode(cfg),
           inputs=['user/mode', 'user/angle', 'user/throttle',
                   'pilot/angle', 'pilot/throttle'],
           outputs=['steering', 'throttle'])
-
+    V.add(DashboardUpdater(socket_update_fn), inputs=['steering', 'throttle'], outputs=[])
+    V.add(WeatherApplier(), inputs=['steering', 'throttle', 'surface'], outputs=['steering', 'throttle'])
 
     if (cfg.CONTROLLER_TYPE != "pigpio_rc") and (cfg.CONTROLLER_TYPE != "MM1"):
         if isinstance(ctr, JoystickController):
@@ -698,11 +705,9 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
     # This web controller will create a web server that is capable
     # of managing steering, throttle, and modes, and more.
     #
-    ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT, mode=cfg.WEB_INIT_MODE, cfg = cfg)
-    V.add(ctr,
-          inputs=[input_image, 'tub/num_records', 'user/mode', 'recording'],
-          outputs=['user/steering', 'user/throttle', 'user/mode', 'recording', 'web/buttons'],
-          threaded=True)
+
+    to_add = []
+    ctr = None
 
     #
     # also add a physical controller if one is configured
@@ -714,12 +719,13 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
         if cfg.CONTROLLER_TYPE == "pigpio_rc":  # an RC controllers read by GPIO pins. They typically don't have buttons
             from donkeycar.parts.controller import RCReceiver
             ctr = RCReceiver(cfg)
-            V.add(
-                ctr,
-                inputs=['user/mode', 'recording'],
-                outputs=['user/steering', 'user/throttle',
+            to_add.append({
+                "part":ctr, 
+                "inputs":['user/mode', 'recording'], 
+                "outputs":['user/steering', 'user/throttle',
                          'user/mode', 'recording'],
-                threaded=False)
+                "threaded":False})
+
         else:
             #
             # custom game controller mapping created with
@@ -749,15 +755,30 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
                 if cfg.USE_NETWORKED_JS:
                     from donkeycar.parts.controller import JoyStickSub
                     netwkJs = JoyStickSub(cfg.NETWORK_JS_SERVER_IP)
-                    V.add(netwkJs, threaded=True)
+                    to_add.append({
+                        "part":netwkJs,
+                        "threaded":True})
                     ctr.js = netwkJs
-            V.add(
-                ctr,
-                inputs=[input_image, 'user/mode', 'recording'],
-                outputs=['user/steering', 'user/throttle',
+            to_add.append({
+                "part":ctr, 
+                "inputs":[input_image, 'user/mode', 'recording'], 
+                "outputs":['user/steering', 'user/throttle',
                          'user/mode', 'recording'],
-                threaded=True)
-    return ctr
+                "threaded":True})
+
+    web_ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT, mode=cfg.WEB_INIT_MODE, cfg = cfg, basic_ctr = ctr)
+    socket_update_fn = web_ctr.send_websocket_data
+
+    V.add(web_ctr,
+        inputs=[input_image, 'tub/num_records', 'user/mode', 'recording'],
+        outputs=['user/steering', 'user/throttle', 'user/mode', 'recording', 'surface','web/buttons'],
+        threaded=True)
+    if ctr == None:
+        ctr = web_ctr
+    for item in to_add:
+        V.add(**item)
+
+    return ctr, socket_update_fn if socket_update_fn else None
 
 
 def add_simulator(V, cfg):
