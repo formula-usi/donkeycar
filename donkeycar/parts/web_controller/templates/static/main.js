@@ -139,6 +139,7 @@ var driveHandler = new function() {
         let changed = false;
         if(typeof data === 'object') {
             const keys = Object.keys(data)
+
             keys.forEach(key => {
                 //
                 // state must already have the key;
@@ -151,6 +152,15 @@ var driveHandler = new function() {
                         changed = updateState(state[key], data[key]) && changed;
                     } else {
                         state[key] = data[key];
+                        changed = true;
+                    }
+                }
+                if(state["tele"]["user"].hasOwnProperty(key) && state["tele"]["user"][key] !== data[key]) {
+                    if(typeof state["tele"]["user"][key] === 'object') {
+                        // recursively update the state's object field
+                        changed = updateState(state["tele"]["user"][key], data[key]) && changed;
+                    } else {
+                        state["tele"]["user"][key] = data[key];
                         changed = true;
                     }
                 }
@@ -191,6 +201,7 @@ var driveHandler = new function() {
 
       $('#max_throttle_range').on('input', function () {
         state.maxThrottle = parseFloat($(this).val()) / 100.0;
+        postDrive(['max_throttle']);
 
       });
 
@@ -211,15 +222,21 @@ var driveHandler = new function() {
           }
         }
         // If not in user mode, keep all throttle controls hidden
+        postDrive(['throttle_mode']);
+
       });
 
       // Handlers for steer limited mode controls
       $('#straight_throttle_range').on('input', function () {
         state.straightThrottle = parseFloat($(this).val()) / 100.0;
+        postDrive(['straight_throttle']);
+
       });
 
       $('#steer_throttle_range').on('input', function () {
         state.steerThrottle = parseFloat($(this).val()) / 100.0;
+        postDrive(['steer_throttle']);
+
       });
 
       $('#record_button').click(function () {
@@ -257,6 +274,11 @@ var driveHandler = new function() {
         }
         updateUI();
       });
+
+          //  state.controlMode = "joystick";
+          // joystickLoopRunning = true;
+          // console.log('joystick mode');
+          // joystickLoop();
 
       // programmable buttons
       $('#button_bar > button').mousedown(function() {
@@ -309,7 +331,6 @@ var driveHandler = new function() {
     }
 
     var updateUI = function() {
-
       $("#throttleInput").val(state.tele.user.throttle);
       $("#angleInput").val(state.tele.user.angle);
       $('#mode_select').val(state.driveMode);
@@ -481,11 +502,10 @@ var driveHandler = new function() {
     // via the websocket connection
     //
     var postDrive = function(fields=[]) {
-
         if(fields.length === 0) {
             fields = ALL_POST_FIELDS;
         }
-        console.log(state.tele.user.throttle);
+        // console.log(state.tele.user.throttle);
         let data = {}
         fields.forEach(field => {
             switch (field) {
@@ -507,7 +527,8 @@ var driveHandler = new function() {
         });
         if(data) {
             let json_data = JSON.stringify(data);
-            console.log(`Posting ${json_data}`);
+            // console.log(`Posting ${json_data}`);
+
             socket.send(json_data)
             updateUI()
         }
@@ -569,7 +590,7 @@ var driveHandler = new function() {
 
     // Send control updates to the server every .1 seconds.
     function joystickLoop () {
-       console.log(`joystickLoop CALLED - loopRunning: ${joystickLoopRunning}, controlMode: ${state.controlMode}`);
+      //  console.log(`joystickLoop CALLED - loopRunning: ${joystickLoopRunning}, controlMode: ${state.controlMode}`);
        setTimeout(function () {
             console.log(`joystickLoop TIMEOUT FIRED`);
             // Recalculate throttle with current maxThrottle to handle real-time changes
@@ -579,8 +600,9 @@ var driveHandler = new function() {
             // Reset angle if throttle is too small
             if (state.tele.user.throttle < .001) {
               state.tele.user.angle = 0
+              state.tele.user.throttle = 0
             }
-            console.log(`${state.maxThrottle}`)
+            // console.log(`${state.maxThrottle}`)
             // console.log(`JoystickLoop - raw: ${rawJoystickThrottle.toFixed(2)}, maxThrottle: ${state.maxThrottle.toFixed(2)}, limited: ${state.tele.user.throttle.toFixed(2)}`)
             
             postDrive()

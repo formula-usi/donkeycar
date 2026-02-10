@@ -701,7 +701,6 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
 
     to_add = []
     ctr = None
-    web_ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT, mode=cfg.WEB_INIT_MODE, cfg = cfg)
 
     #
     # also add a physical controller if one is configured
@@ -760,6 +759,7 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
                          'user/mode', 'recording'],
                 "threaded":True})
 
+    web_ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT, mode=cfg.WEB_INIT_MODE, cfg = cfg, basic_ctr = ctr)
 
     V.add(web_ctr,
         inputs=[input_image, 'tub/num_records', 'user/mode', 'recording'],

@@ -10,11 +10,13 @@ def compute_throttle(throttle, old_throttle, surface):
         old_throttle: Previous throttle value
         surface: Surface type ("Dry", "Wet", "Icy")
     """
-    if surface == "Dry":
+    throttle = throttle if abs(throttle) > 0.1 else 0
+
+    if surface.upper() == "DRY":
         return throttle
-    elif surface == "Wet":
+    elif surface.upper() == "WET":
         return apply_wet_conditions(throttle, old_throttle)
-    elif surface == "Icy":
+    elif surface.upper() == "ICY":
         return apply_icy_conditions(throttle, old_throttle)
     else:
         return throttle
@@ -29,11 +31,12 @@ def compute_steering_angle(steering_angle, throttle, old_steering_angle, surface
         old_steering_angle: Previous steering value
         surface: Surface type ("Dry", "Wet", "Icy")
     """
-    if surface == "Dry":
+    throttle = throttle if abs(throttle) > 0.1 else 0
+    if surface.upper() == "DRY":
         return steering_angle
-    elif surface == "Wet":
+    elif surface.upper() == "WET":
         return apply_wet_steering(steering_angle, throttle, old_steering_angle)
-    elif surface == "Icy":
+    elif surface.upper() == "ICY":
         return apply_icy_steering(steering_angle, throttle, old_steering_angle)
     else:
         return steering_angle

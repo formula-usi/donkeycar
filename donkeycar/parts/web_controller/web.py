@@ -27,7 +27,7 @@ from donkeycar.surface_handler import compute_throttle, compute_steering_angle
 from ... import utils
 
 logger = logging.getLogger(__name__)
-
+logging.getLogger('tornado.access').propagate = False
 
 class RemoteWebServer():
     '''
@@ -105,7 +105,7 @@ class RemoteWebServer():
 
 class LocalWebController(tornado.web.Application):
 
-    def __init__(self, port=8887, mode='user', cfg: Config = None):
+    def __init__(self, port=8887, mode='user', cfg: Config = None, basic_ctr=None):
         """
         Create and publish variables needed on many of
         the web handlers.
@@ -122,6 +122,7 @@ class LocalWebController(tornado.web.Application):
         self.recording = False
         self.recording_latch = None
         self.buttons = {}  # latched button values for processing
+        self.basic_ctr = basic_ctr
 
 
         self.port = port
@@ -143,6 +144,7 @@ class LocalWebController(tornado.web.Application):
         self.throttle_mode = "default"
         self.straight_throttle = 1.0
         self.steer_throttle = 1.0
+        self.basic_ctr.socket_update_fn = self.send_websocket_data
 
         handlers = [
             (r"/", RedirectHandler, dict(url="/drive")),
@@ -376,8 +378,6 @@ class DrivePostAPI(RequestHandler):
         straight_throttle = self.application.straight_throttle
         steer_throttle = self.application.steer_throttle
         
-        logger.info(f"POST received - max_throttle: {max_throttle}, throttle_mode: {throttle_mode}, app_id: {id(self.application)}")
-        
         throttle = self.limited_throttle(
             throttle,
             max_throttle,
@@ -388,12 +388,14 @@ class DrivePostAPI(RequestHandler):
         )
         new_throttle = compute_throttle(throttle, self.application.throttle, self.application.surface)
         new_steering = compute_steering_angle(angle, throttle, self.application.angle, self.application.surface)
-
         self.application.angle = new_steering
-        self.application.throttle = new_throttle
-        self.write({"angle": new_steering, "throttle": new_throttle})
-        changes = {"throttle": new_throttle, "angle": new_steering}
+        self.application.throttle = float(new_throttle) if abs(float(new_throttle)) > 0.1 else 0
+
+        angle_to_print = float(new_steering) if abs(float(new_steering)) > 0.05 else 0
+        self.write({"angle": new_steering, "throttle": self.application.throttle})
+        changes = {"throttle": self.application.throttle , "angle": angle_to_print}
         self.application.send_websocket_data(changes)
+
 
 
 class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
@@ -409,21 +411,21 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
 
     def on_message(self, message):
         data = json.loads(message)
-        logger.info(f"WebSocket received from drive page: {message}")
+        # logger.info(f"WebSocket received from drive page: {message}")
         self.application.surface = data.get('surface', self.application.surface)
         self.application.max_throttle = data.get('max_throttle', self.application.max_throttle)
         self.application.throttle_mode = data.get('throttle_mode', self.application.throttle_mode)
         self.application.straight_throttle = data.get('straight_throttle', self.application.straight_throttle)
         self.application.steer_throttle = data.get('steer_throttle', self.application.steer_throttle)
         
-        logger.info(f"Updated application attributes - max_throttle: {self.application.max_throttle}, throttle_mode: {self.application.throttle_mode}, app_id: {id(self.application)}")
+        # logger.info(f"Updated application attributes - max_throttle: {self.application.max_throttle}, throttle_mode: {self.application.throttle_mode}, app_id: {id(self.application)}")
         
         new_throttle = compute_throttle(data.get('throttle', self.application.throttle), self.application.throttle, self.application.surface)
         new_steering = compute_steering_angle(data.get('angle', self.application.angle), data.get('throttle', self.application.throttle), self.application.angle, self.application.surface)
         self.application.angle = new_steering
         self.application.throttle = new_throttle
         
-        logger.info(f"Computed values - angle: {new_steering}, throttle: {new_throttle}")
+        # logger.info(f"Computed values - angle: {new_steering}, throttle: {new_throttle}")
        
         changes = {}
         
@@ -465,10 +467,17 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
         if changes:
             logger.debug(f"Broadcasting changes to clients: {changes}")
             self.application.send_websocket_data(changes)
+        if(self.application.basic_ctr is not None):
+            self.application.basic_ctr.max_throttle = self.application.max_throttle
+            self.application.basic_ctr.surface = self.application.surface
+            self.application.basic_ctr.throttle_mode = self.application.throttle_mode
+            self.application.basic_ctr.straight_throttle = self.application.straight_throttle
+            self.application.basic_ctr.steer_throttle = self.application.steer_throttle
 
     def on_close(self):
         logger.info("Client disconnected")
         self.application.wsclients.remove(self)
+
 
 
 class WebSocketCalibrateAPI(tornado.websocket.WebSocketHandler):
@@ -535,44 +544,31 @@ class VideoAPI(RequestHandler):
 
         served_image_timestamp = time.time()
         my_boundary = "--boundarydonotcross\n"
-        
-        last_img_id = None
-        
         while True:
-            # Reduce interval to 20 FPS (instead of 200 FPS)
-            interval = .05
-            
+
+            interval = .005
             if served_image_timestamp + interval < time.time():
-            
-                current_img_arr = getattr(self.application, 'img_arr', None)
-
-                if current_img_arr is not None and id(current_img_arr) != last_img_id:
-                
-                    img = utils.arr_to_binary(current_img_arr)
-                    last_img_id = id(current_img_arr)
-
-                    self.write(my_boundary)
-                    self.write("Content-type: image/jpeg\r\n")
-                    self.write("Content-length: %s\r\n\r\n" % len(img))
-                    self.write(img)
-                    served_image_timestamp = time.time()
-                    try:
-                        await self.flush()
-                    except tornado.iostream.StreamClosedError:
-                        break 
-                elif current_img_arr is None:
+                #
+                # if we have an image, then use it.
+                # otherwise show placeholder
+                #
+                if hasattr(self.application, 'img_arr') and self.application.img_arr is not None:
+                    img = utils.arr_to_binary(self.application.img_arr)
+                else:
                     img = utils.arr_to_binary(placeholder_image)
-                    self.write(my_boundary)
-                    self.write("Content-type: image/jpeg\r\n")
-                    self.write("Content-length: %s\r\n\r\n" % len(img))
-                    self.write(img)
-                    served_image_timestamp = time.time()
-                    try:
-                        await self.flush()
-                    except tornado.iostream.StreamClosedError:
-                        break
 
-            await tornado.gen.sleep(0.005)
+                self.write(my_boundary)
+                self.write("Content-type: image/jpeg\r\n")
+                self.write("Content-length: %s\r\n\r\n" % len(img))
+                self.write(img)
+                served_image_timestamp = time.time()
+                try:
+                    await self.flush()
+                except tornado.iostream.StreamClosedError:
+                    pass
+            else:
+                await tornado.gen.sleep(interval)
+
 
 class BaseHandler(RequestHandler):
     """ Serves the FPV web page"""
@@ -636,13 +632,15 @@ class DashboardAPI(RequestHandler):
             "Icy": "/static/weather/icy.png"
         }
         current_surface_icon = surface_icons.get(self.application.surface, "/static/weather/dry.png")
-        
+        angle_to_print = float(self.application.throttle) if abs(float(self.application.throttle)) > 0.05 else 0
         data = {
             "current_ai_mul": str(self.application.cfg.AI_THROTTLE_MULT if self.application.cfg is not None else 0.0),
             "current_circuit": self.application.circuit,
             "current_surface": self.application.surface,
             "current_surface_icon": current_surface_icon,
-            "current_circuit_icon": self.application.circuit_icon
+            "current_circuit_icon": self.application.circuit_icon,
+            "throttle": self.application.throttle,
+            "angle": angle_to_print
         }
         self.render("templates/vehicle_show.html", **data)
 
@@ -700,3 +698,5 @@ class CircuitAPI(RequestHandler):
         if changes:
             logger.info(f"CircuitAPI broadcasting changes: {changes}")
             self.application.send_websocket_data(changes)
+        if(self.application.basic_ctr is not None):
+            self.application.basic_ctr.surface = self.application.surface

@@ -5,6 +5,7 @@ import struct
 import random
 from threading import Thread
 import logging
+from donkeycar.surface_handler import compute_throttle, compute_steering_angle
 
 from prettytable import PrettyTable
 
@@ -1185,21 +1186,77 @@ class JoystickControllerAPI(JoystickController):
     '''
     def __init__(self, *args, **kwargs):
         super(JoystickControllerAPI, self).__init__(*args, **kwargs)
+        self.max_throttle = 1.0
+        self.straight_throttle = 1.0
+        self.steer_throttle = 1.0
+        self.throttle_mode = "max"
+        self.surface = "dry"
+        self.old_throttle = 0.0
+        self.old_angle = 0.0
+        self.socket_update_fn = None
 
+    
+
+    def limited_throttle(
+        self,
+        new_throttle,
+        max_throttle,
+        throttle_mode,
+        straight_throttle,
+        steer_throttle,
+        steer_angle
+    ):
+        limited_throttle = 0
+
+        if new_throttle > 0:
+            limited_throttle = min(max_throttle, new_throttle)
+
+        if new_throttle < 0:
+            limited_throttle = max(-max_throttle, new_throttle)
+
+        if throttle_mode == "constant":
+            limited_throttle = max_throttle
+
+        if throttle_mode == "steer_limited":
+            # Interpolate between straight throttle and full steer throttle
+            steer_amount = abs(steer_angle)  # 0 to 1
+            max_allowed_throttle = (
+                straight_throttle +
+                (steer_throttle - straight_throttle) * steer_amount
+            )
+
+            if new_throttle > 0:
+                limited_throttle = min(max_allowed_throttle, new_throttle)
+            elif new_throttle < 0:
+                limited_throttle = max(-max_allowed_throttle, new_throttle)
+
+        return limited_throttle
 
     def run_threaded(self, img_arr=None, mode=None, recording=None):
         angle, throttle, mode, recording = super().run_threaded(img_arr, mode, recording)
         #do a post request to api with current joystick state
-        response = requests.post("http://localhost:8887/api/drive", json = {
-            "angle": angle,
-            "throttle": throttle
-        }).json()
+        throttle = self.limited_throttle(
+            throttle,
+            self.max_throttle,
+            self.throttle_mode,
+            self.straight_throttle,
+            self.steer_throttle,
+            angle
+        )
+        new_throttle = compute_throttle(throttle, self.old_throttle, self.surface)
+        new_steering = compute_steering_angle(angle, throttle, self.old_angle, self.surface)
+        throttle = float(new_throttle) if abs(float(new_throttle)) > 0.1 else 0
+        angle = float(new_steering)
+        angle_to_print = float(new_steering) if abs(float(new_steering)) > 0.05 else 0
 
-        new_angle = response["angle"]
-        new_throttle = response["throttle"]
-        self.angle = float(new_angle)
-        self.throttle = float(new_throttle)
-        return self.angle, self.throttle, self.mode, self.recording
+        changes = {"throttle": throttle , "angle": angle_to_print}
+        if self.socket_update_fn is not None:
+            self.socket_update_fn(changes)
+
+        self.recording = False if throttle == 0 else True
+        self.old_throttle = throttle
+        self.old_angle = angle
+        return angle, throttle, self.mode, self.recording
 
 
 class JoystickCreatorController(JoystickController):
