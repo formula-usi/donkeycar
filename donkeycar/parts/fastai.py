@@ -274,12 +274,29 @@ class FastAILinearMW(FastAILinear):
                  interpreter: Interpreter = FastAIInterpreter(),
                  input_shape: Tuple[int, ...] = (120, 160, 3),
                  num_outputs: int = 2,
-                 n_weathers: int = 3):
+                 n_weathers: int = 3,
+                 surface_id: int = 0):
         self.n_weathers = n_weathers
+        self.surface_id = surface_id  # Default surface for inference
         super().__init__(interpreter, input_shape, num_outputs)
 
     def create_model(self):
-        return LinearMW(self.n_weathers)  
+        return LinearMW(self.n_weathers)
+    
+    def set_surface_id(self, surface_id: int) -> None:
+        """Set the current surface/weather condition for inference"""
+        if surface_id >= self.n_weathers:
+            logger.warning(f"Surface ID {surface_id} exceeds number of weathers {self.n_weathers}, using 0")
+            surface_id = 0
+        self.surface_id = surface_id
+    
+    def inference(self, img_arr: torch.tensor, other_arr: Optional[torch.tensor]) \
+            -> Tuple[Union[float, torch.tensor], ...]:
+        """Override inference to pass surface_id as a tuple with the image"""
+        # Wrap img_arr and surface_id as a tuple for the model
+        img_with_surface = (img_arr, torch.tensor(self.surface_id, dtype=torch.long))
+        out = self.interpreter.predict(img_with_surface, other_arr)
+        return self.interpreter_to_output(out)  
 
 class Linear(nn.Module):
     def __init__(self):
@@ -324,7 +341,13 @@ class LinearMW(nn.Module):
         self.subnetworks = nn.ModuleList([Linear() for _ in range(n_weathers)])
 
     def forward(self, x):
-        # x is a tuple of (image, surface_id)
+        # x is always a tuple of (image, surface_id)
         img, surface_id = x
+        print(surface_id)
+        # Extract scalar value from surface_id tensor
+        if isinstance(surface_id, torch.Tensor):
+            surface_idx = surface_id.item() if surface_id.dim() == 0 else surface_id[0].item()
+        else:
+            surface_idx = int(surface_id)
         # Use the appropriate subnetwork based on surface_id
-        return self.subnetworks[surface_id.item() if surface_id.dim() == 0 else surface_id[0].item()](img)
+        return self.subnetworks[surface_idx](img)
