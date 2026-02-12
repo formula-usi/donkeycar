@@ -293,13 +293,28 @@ class FastAILinearMW(FastAILinear):
         if hasattr(self.interpreter, 'model') and self.interpreter.model is not None:
             self.interpreter.model.inference_surface_id = surface_id
     
+    def run(self, img_arr: np.ndarray, other_arr: List[float] = None) \
+            -> Tuple[Union[float, torch.tensor], ...]:
+        """
+        Override run to handle surface_id as integer (not float).
+        If other_arr is provided, it's assumed to be [surface_id] or surface_id.
+        """
+        transform = get_default_transform(resize=False)
+        norm_arr = transform(img_arr)
+        
+        # If other_arr is provided, use it as surface_id (convert to LongTensor)
+        if other_arr is not None:
+            surface_id_value = other_arr[0] if isinstance(other_arr, list) else other_arr
+            tensor_other_array = torch.LongTensor([int(surface_id_value)])
+        else:
+            tensor_other_array = None
+        
+        return self.inference(norm_arr, tensor_other_array)
+    
     def inference(self, img_arr: torch.tensor, other_arr: Optional[torch.tensor]) \
             -> Tuple[Union[float, torch.tensor], ...]:
-        """Override inference to set surface_id in the model before prediction"""
-        # Set the surface_id in the model for inference
-        if hasattr(self.interpreter, 'model') and self.interpreter.model is not None:
-            self.interpreter.model.inference_surface_id = self.surface_id
-        # Pass the image normally to the interpreter
+        """Override inference to pass surface_id correctly"""
+        # Pass the image and surface_id (if provided) to the interpreter
         out = self.interpreter.predict(img_arr, other_arr)
         return self.interpreter_to_output(out)  
 
@@ -355,7 +370,11 @@ class LinearMW(nn.Module):
             img, surface_id = x[0], x[1]
             # Extract scalar value from surface_id tensor
             if isinstance(surface_id, torch.Tensor):
-                surface_idx = surface_id.item() if surface_id.dim() == 0 else surface_id[0].item()
+                # Handle batch dimension: take first element if batched
+                if surface_id.dim() > 0:
+                    surface_idx = int(surface_id[0].item())
+                else:
+                    surface_idx = int(surface_id.item())
             else:
                 surface_idx = int(surface_id)
         else:
@@ -363,6 +382,8 @@ class LinearMW(nn.Module):
             img = x
             surface_idx = self.inference_surface_id
         
+        # Ensure surface_idx is valid
+        surface_idx = max(0, min(surface_idx, len(self.subnetworks) - 1))
+        
         # Use the appropriate subnetwork based on surface_id
-        print(f"Using subnetwork {surface_idx}")
         return self.subnetworks[surface_idx](img)
