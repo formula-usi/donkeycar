@@ -289,13 +289,18 @@ class FastAILinearMW(FastAILinear):
             logger.warning(f"Surface ID {surface_id} exceeds number of weathers {self.n_weathers}, using 0")
             surface_id = 0
         self.surface_id = surface_id
+        # Update the model's surface_id for inference
+        if hasattr(self.interpreter, 'model') and self.interpreter.model is not None:
+            self.interpreter.model.inference_surface_id = surface_id
     
     def inference(self, img_arr: torch.tensor, other_arr: Optional[torch.tensor]) \
             -> Tuple[Union[float, torch.tensor], ...]:
-        """Override inference to pass surface_id as a tuple with the image"""
-        # Wrap img_arr and surface_id as a tuple for the model
-        img_with_surface = (img_arr, torch.tensor(self.surface_id, dtype=torch.long))
-        out = self.interpreter.predict(img_with_surface, other_arr)
+        """Override inference to set surface_id in the model before prediction"""
+        # Set the surface_id in the model for inference
+        if hasattr(self.interpreter, 'model') and self.interpreter.model is not None:
+            self.interpreter.model.inference_surface_id = self.surface_id
+        # Pass the image normally to the interpreter
+        out = self.interpreter.predict(img_arr, other_arr)
         return self.interpreter_to_output(out)  
 
 class Linear(nn.Module):
@@ -339,15 +344,23 @@ class LinearMW(nn.Module):
     def __init__(self, n_weathers = 3):
         super().__init__()
         self.subnetworks = nn.ModuleList([Linear() for _ in range(n_weathers)])
+        self.inference_surface_id = 0  # Default for inference
 
     def forward(self, x):
-        # x is always a tuple of (image, surface_id)
-        img, surface_id = x
-        print(surface_id)
-        # Extract scalar value from surface_id tensor
-        if isinstance(surface_id, torch.Tensor):
-            surface_idx = surface_id.item() if surface_id.dim() == 0 else surface_id[0].item()
+        # During training: x is a tuple of (image, surface_id)
+        # During inference: x is just the image tensor
+        if isinstance(x, tuple):
+            # Training mode: unpack the tuple
+            img, surface_id = x
+            # Extract scalar value from surface_id tensor
+            if isinstance(surface_id, torch.Tensor):
+                surface_idx = surface_id.item() if surface_id.dim() == 0 else surface_id[0].item()
+            else:
+                surface_idx = int(surface_id)
         else:
-            surface_idx = int(surface_id)
+            # Inference mode: use the stored inference_surface_id
+            img = x
+            surface_idx = self.inference_surface_id
+        
         # Use the appropriate subnetwork based on surface_id
         return self.subnetworks[surface_idx](img)
