@@ -311,4 +311,4 @@ class LinearMW(nn.Module):
         self.subnetworks = nn.ModuleList([Linear() for _ in range(n_weathers)])
 
     def forward(self, x):
-        return (self.subnetworks[0](x) + self.subnetworks[1](x) + self.subnetworks[2](x)) / 3
+        return self.subnetworks[x[1]](x[0])
