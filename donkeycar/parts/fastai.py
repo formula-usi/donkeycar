@@ -203,6 +203,11 @@ class FastAiPilot(ABC):
         if hasattr(model, 'subnetworks'):
             total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             logger.info(f"Model has {len(model.subnetworks)} subnetworks with total {total_params:,} trainable parameters")
+            # Save initial weights to check if unused subnetworks change
+            initial_weights = {}
+            for i, subnet in enumerate(model.subnetworks):
+                initial_weights[i] = subnet.conv24.weight.data.clone()
+                logger.info(f"Subnetwork {i} initial weight mean: {initial_weights[i].mean().item():.6f}")
 
         logger.info(self.learner.summary())
         logger.info(self.learner.loss_func)
@@ -213,6 +218,13 @@ class FastAiPilot(ABC):
         logger.info(f"Suggested Learning Rate {suggestedLr}")
 
         self.learner.fit_one_cycle(epochs, suggestedLr, cbs=callbacks)
+        
+        # Check if unused subnetworks changed
+        if hasattr(model, 'subnetworks') and 'initial_weights' in locals():
+            logger.info("\nWeight changes after training:")
+            for i, subnet in enumerate(model.subnetworks):
+                weight_diff = (subnet.conv24.weight.data - initial_weights[i]).abs().mean().item()
+                logger.info(f"Subnetwork {i}: weight change = {weight_diff:.6e}")
 
         torch.save(self.learner.model, model_path)
 
@@ -377,22 +389,48 @@ class LinearMW(nn.Module):
         self._mode_check_count += 1
         if self._mode_check_count % 100 == 1:
             logger.info(f"LinearMW forward pass #{self._mode_check_count}: training={self.training}")
+            # Check subnetwork training mode
+            for i, subnet in enumerate(self.subnetworks):
+                logger.info(f"  Subnetwork {i}: training={subnet.training}")
         
         if isinstance(x, (tuple, list)):
             # Training/inference mode with surface_id provided
             img, surface_id = x[0], x[1]
-            # Check if batch dimension is missing and add it
-            if img.dim() == 3:  # [C, H, W] -> need [1, C, H, W]
-                img = img.unsqueeze(0)
-            # Extract scalar value from surface_id tensor
-            if isinstance(surface_id, torch.Tensor):
-                # Handle batch dimension: take first element if batched
-                if surface_id.dim() > 0:
-                    surface_idx = int(surface_id[0].item())
+            
+            # Handle batched training vs single inference
+            if isinstance(surface_id, torch.Tensor) and surface_id.dim() > 0 and len(surface_id) > 1:
+                # Check if all surface_ids in batch are the same
+                unique_surfaces = torch.unique(surface_id)
+                if len(unique_surfaces) == 1:
+                    # All same surface - process as one batch (fast path)
+                    surface_idx = int(unique_surfaces[0].item())
+                    surface_idx = max(0, min(surface_idx, len(self.subnetworks) - 1))
+                    return self.subnetworks[surface_idx](img)
                 else:
-                    surface_idx = int(surface_id.item())
+                    # Mixed surfaces in batch - process each sample individually
+                    batch_size = img.shape[0]
+                    outputs = []
+                    for i in range(batch_size):
+                        sample_img = img[i:i+1]  # Keep batch dimension
+                        surface_idx = int(surface_id[i].item())
+                        surface_idx = max(0, min(surface_idx, len(self.subnetworks) - 1))
+                        output = self.subnetworks[surface_idx](sample_img)
+                        outputs.append(output)
+                    return torch.cat(outputs, dim=0)
             else:
-                surface_idx = int(surface_id)
+                # Single inference
+                # Check if batch dimension is missing and add it
+                if img.dim() == 3:  # [C, H, W] -> need [1, C, H, W]
+                    img = img.unsqueeze(0)
+                
+                # Extract scalar value from surface_id tensor
+                if isinstance(surface_id, torch.Tensor):
+                    if surface_id.dim() > 0:
+                        surface_idx = int(surface_id[0].item())
+                    else:
+                        surface_idx = int(surface_id.item())
+                else:
+                    surface_idx = int(surface_id)
         else:
             # Inference mode without surface_id: use the stored inference_surface_id
             img = x
