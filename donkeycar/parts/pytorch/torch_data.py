@@ -99,6 +99,66 @@ class TorchTubDataset(IterableDataset):
         return iter(self.pipeline)
 
 
+class TorchTubDatasetWithSurface(IterableDataset):
+    '''
+    TorchTubDataset that includes surface_id for multi-weather models.
+    '''
+
+    def __init__(self, config, records: List[TubRecord], transform=None):
+        """Create a PyTorch Tub Dataset with surface_id support
+
+        Args:
+            config (object): the configuration information
+            records (List[TubRecord]): a list of tub records
+            transform (function, optional): a transform to apply to the data
+        """
+        self.config = config
+
+        # Handle the transforms
+        if transform:
+            self.transform = transform
+        else:
+            self.transform = get_default_transform()
+
+        self.sequence = TubSequence(records)
+        self.pipeline = self._create_pipeline()
+        self.len = len(records)
+
+    def _create_pipeline(self):
+        """ Pipeline that includes surface_id """
+
+        def y_transform(record: TubRecord):
+            angle: float = record.underlying['user/angle']
+            throttle: float = record.underlying['user/throttle']
+            surface_id: int = record.underlying.get('surface_id', 0)
+            
+            predictions = torch.tensor([angle, throttle], dtype=torch.float)
+            # Normalize to be between [0, 1]
+            # angle and throttle are originally between [-1, 1]
+            predictions = (predictions + 1) / 2
+            
+            # Return predictions and surface_id as separate items
+            return predictions, torch.tensor(surface_id, dtype=torch.long)
+
+        def x_transform(record: TubRecord):
+            # Loads the result of Image.open()
+            img_arr = record.image(as_nparray=False)
+            return self.transform(img_arr)
+
+        # Build pipeline using the transformations
+        pipeline = self.sequence.build_pipeline(x_transform=x_transform,
+                                                y_transform=y_transform)
+        return pipeline
+
+    def __len__(self):
+        return len(self.sequence)
+
+    def __iter__(self):
+        # Yield (image, (predictions, surface_id)) tuples
+        for img, (predictions, surface_id) in self.pipeline:
+            yield (img, surface_id), predictions
+
+
 class TorchTubDataModule(pl.LightningDataModule):
 
     def __init__(self, config: Any, tub_paths: List[str], transform=None):

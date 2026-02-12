@@ -165,7 +165,20 @@ class FastAiPilot(ABC):
 
         # Create DataLoaders first (on CPU, data will be moved per batch)
         # Use num_workers=0 to avoid multiprocessing issues with CUDA
+        logger.info(f"Training dataset size: {len(train_data)}")
+        logger.info(f"Validation dataset size: {len(validation_data)}")
+        logger.info(f"Batch size: {batch_size}")
+        
+        # Check if dataset is too small
+        if len(train_data) == 0:
+            raise ValueError("Training dataset is empty!")
+        if len(validation_data) == 0:
+            raise ValueError("Validation dataset is empty!")
+        
         dataLoader = DataLoaders.from_dsets(train_data, validation_data, bs=batch_size, shuffle=False, num_workers=0)
+        #get the first batch 
+
+        
 
         callbacks = [
             EarlyStoppingCallback(monitor='valid_loss',
@@ -311,4 +324,7 @@ class LinearMW(nn.Module):
         self.subnetworks = nn.ModuleList([Linear() for _ in range(n_weathers)])
 
     def forward(self, x):
-        return self.subnetworks[x[1]](x[0])
+        # x is a tuple of (image, surface_id)
+        img, surface_id = x
+        # Use the appropriate subnetwork based on surface_id
+        return self.subnetworks[surface_id.item() if surface_id.dim() == 0 else surface_id[0].item()](img)

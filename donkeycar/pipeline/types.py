@@ -18,6 +18,7 @@ TubRecordDict = TypedDict(
     {
         '_index': int,
         '_session_id': str,
+        'surface_id': Optional[int],
         'cam/image_array': str,
         'user/angle': float,
         'user/throttle': float,

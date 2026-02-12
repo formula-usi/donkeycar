@@ -134,10 +134,17 @@ def train(cfg: Config, tub_paths: str, model: str = None,
 
     if 'fastai_' in model_type:
         from donkeycar.parts.pytorch.torch_data \
-            import TorchTubDataset, get_default_transform
+            import TorchTubDataset, TorchTubDatasetWithSurface, get_default_transform
         transform = get_default_transform(resize=False)
-        dataset_train = TorchTubDataset(cfg, training_records, transform=transform)
-        dataset_validate = TorchTubDataset(cfg, validation_records, transform=transform)
+        
+        # Use TorchTubDatasetWithSurface for multi-weather models
+        if 'mw' in model_type.lower():
+            dataset_train = TorchTubDatasetWithSurface(cfg, training_records, transform=transform)
+            dataset_validate = TorchTubDatasetWithSurface(cfg, validation_records, transform=transform)
+        else:
+            dataset_train = TorchTubDataset(cfg, training_records, transform=transform)
+            dataset_validate = TorchTubDataset(cfg, validation_records, transform=transform)
+        
         train_size = len(training_records)
         val_size = len(validation_records)
     else:
