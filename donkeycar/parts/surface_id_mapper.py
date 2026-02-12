@@ -10,9 +10,6 @@ class SurfaceIdMapper:
         }
         return surface_id_map.get(surface.lower(), -1)
 
-    def __init__(self, *args, **kwargs):
-
-
 
 
     def run(self,surface):
