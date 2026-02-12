@@ -491,7 +491,6 @@ def get_model_by_type(model_type: str, cfg: 'Config') -> Union['KerasPilot', 'Fa
         KerasLSTM, Keras3D_CNN
     from donkeycar.parts.interpreter import KerasInterpreter, TfLite, TensorRT, \
         FastAIInterpreter
-
     if model_type is None:
         model_type = cfg.DEFAULT_MODEL_TYPE
     logger.info(f'get_model_by_type: model type is: {model_type}')
@@ -508,6 +507,9 @@ def get_model_by_type(model_type: str, cfg: 'Config') -> Union['KerasPilot', 'Fa
         if used_model_type == "linear":
             from donkeycar.parts.fastai import FastAILinear
             return FastAILinear(interpreter=interpreter, input_shape=input_shape)
+        elif used_model_type == "linear_mw":
+            from donkeycar.parts.fastai import FastAILinearMW
+            return FastAILinearMW(interpreter=interpreter, input_shape=input_shape)
     else:
         interpreter = KerasInterpreter()
         used_model_type = model_type

@@ -251,6 +251,22 @@ class FastAILinear(FastAiPilot):
         img_shape = self.get_input_shape('img')[1:]
         return img_shape
 
+class FastAILinearMW(FastAILinear):
+    """
+    The FastAILinearMW pilot uses one subnetwork per weather condition. Each
+    subnetwork is a FastAILinear model. The output is not bounded.
+    """
+
+    def __init__(self,
+                 interpreter: Interpreter = FastAIInterpreter(),
+                 input_shape: Tuple[int, ...] = (120, 160, 3),
+                 num_outputs: int = 2,
+                 n_weathers: int = 3):
+        self.n_weathers = n_weathers
+        super().__init__(interpreter, input_shape, num_outputs)
+
+    def create_model(self):
+        return LinearMW(self.n_weathers)  
 
 class Linear(nn.Module):
     def __init__(self):
@@ -288,3 +304,11 @@ class Linear(nn.Module):
         angle = self.output1(x1)
         throttle = self.output2(x1)
         return torch.cat((angle, throttle), 1)
+
+class LinearMW(nn.Module):
+    def __init__(self, n_weathers = 3):
+        super().__init__()
+        self.subnetworks = nn.ModuleList([Linear() for _ in range(n_weathers)])
+
+    def forward(self, x):
+        return (self.subnetworks[0](x) + self.subnetworks[1](x) + self.subnetworks[2](x)) / 3
