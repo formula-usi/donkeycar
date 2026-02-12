@@ -364,4 +364,5 @@ class LinearMW(nn.Module):
             surface_idx = self.inference_surface_id
         
         # Use the appropriate subnetwork based on surface_id
+        print(f"Using subnetwork {surface_idx}")
         return self.subnetworks[surface_idx](img)
