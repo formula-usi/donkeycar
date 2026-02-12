@@ -509,7 +509,8 @@ def get_model_by_type(model_type: str, cfg: 'Config') -> Union['KerasPilot', 'Fa
             return FastAILinear(interpreter=interpreter, input_shape=input_shape)
         elif used_model_type == "linear_mw":
             from donkeycar.parts.fastai import FastAILinearMW
-            return FastAILinearMW(interpreter=interpreter, input_shape=input_shape)
+            n_weathers = getattr(cfg, 'N_WEATHERS', 3)
+            return FastAILinearMW(interpreter=interpreter, input_shape=input_shape, n_weathers=n_weathers)
     else:
         interpreter = KerasInterpreter()
         used_model_type = model_type
