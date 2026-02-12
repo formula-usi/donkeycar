@@ -368,6 +368,7 @@ class LinearMW(nn.Module):
         if isinstance(x, (tuple, list)):
             # Training/inference mode with surface_id provided
             img, surface_id = x[0], x[1]
+            logger.info(f"Input type: {type(x)}, img shape: {img.shape if hasattr(img, 'shape') else 'N/A'}, surface_id: {surface_id}")
             # Extract scalar value from surface_id tensor
             if isinstance(surface_id, torch.Tensor):
                 # Handle batch dimension: take first element if batched
@@ -381,9 +382,11 @@ class LinearMW(nn.Module):
             # Inference mode without surface_id: use the stored inference_surface_id
             img = x
             surface_idx = self.inference_surface_id
+            logger.info(f"Single tensor input, shape: {img.shape}, using surface_idx: {surface_idx}")
         
         # Ensure surface_idx is valid
         surface_idx = max(0, min(surface_idx, len(self.subnetworks) - 1))
         
         # Use the appropriate subnetwork based on surface_id
+        logger.info(f"Using subnetwork {surface_idx}, img shape before subnetwork: {img.shape}")
         return self.subnetworks[surface_idx](img)
