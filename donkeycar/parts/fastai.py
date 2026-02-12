@@ -348,17 +348,18 @@ class LinearMW(nn.Module):
 
     def forward(self, x):
         # During training: x is a tuple of (image, surface_id)
-        # During inference: x is just the image tensor
-        if isinstance(x, tuple):
-            # Training mode: unpack the tuple
-            img, surface_id = x
+        # During inference with surface passed: x is a list [image, surface_id]
+        # During inference without surface: x is just the image tensor
+        if isinstance(x, (tuple, list)):
+            # Training/inference mode with surface_id provided
+            img, surface_id = x[0], x[1]
             # Extract scalar value from surface_id tensor
             if isinstance(surface_id, torch.Tensor):
                 surface_idx = surface_id.item() if surface_id.dim() == 0 else surface_id[0].item()
             else:
                 surface_idx = int(surface_id)
         else:
-            # Inference mode: use the stored inference_surface_id
+            # Inference mode without surface_id: use the stored inference_surface_id
             img = x
             surface_idx = self.inference_surface_id
         
