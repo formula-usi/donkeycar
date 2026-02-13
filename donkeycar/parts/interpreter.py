@@ -232,15 +232,41 @@ class FastAIInterpreter(Interpreter):
 
     def load(self, model_path: str) -> None:
         import torch
-        logger.info(f'Loading model {model_path}')
-        if torch.cuda.is_available():
-            logger.info("using cuda for torch inference")
-            self.model = torch.load(model_path, weights_only=False)
-        else:
-            logger.info("cuda not available for torch inference")
-            self.model = torch.load(model_path, map_location=torch.device('cpu'), weights_only=False)
-        logger.info(self.model)
-        self.model.eval()
+        import sys
+        from donkeycar.parts import fastai
+        
+        # Create a temporary module mapping to handle models saved from __main__
+        # This allows loading models where LinearMW/Linear were defined in __main__
+        class ModuleMapper:
+            def __init__(self):
+                self.fastai = fastai
+                self.Linear = fastai.Linear
+                self.LinearMW = fastai.LinearMW
+        
+        # Inject the module mapper into sys.modules temporarily
+        old_main = sys.modules.get('__main__')
+        try:
+            # If the model references __main__.LinearMW, redirect to fastai module
+            if not hasattr(old_main, 'LinearMW'):
+                sys.modules['__main__'].Linear = fastai.Linear
+                sys.modules['__main__'].LinearMW = fastai.LinearMW
+            
+            logger.info(f'Loading model {model_path}')
+            if torch.cuda.is_available():
+                logger.info("using cuda for torch inference")
+                self.model = torch.load(model_path, weights_only=False)
+            else:
+                logger.info("cuda not available for torch inference")
+                self.model = torch.load(model_path, map_location=torch.device('cpu'), weights_only=False)
+            logger.info(self.model)
+            self.model.eval()
+        finally:
+            # Clean up: remove the injected classes if they weren't there before
+            if old_main and not hasattr(old_main, 'LinearMW'):
+                if hasattr(sys.modules['__main__'], 'Linear'):
+                    delattr(sys.modules['__main__'], 'Linear')
+                if hasattr(sys.modules['__main__'], 'LinearMW'):
+                    delattr(sys.modules['__main__'], 'LinearMW')
 
     def summary(self) -> str:
         return self.model
