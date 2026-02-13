@@ -328,12 +328,6 @@ class FastAILinearMW(FastAILinear):
         
         return self.inference(norm_arr, tensor_other_array)
     
-    def inference(self, img_arr: torch.tensor, other_arr: Optional[torch.tensor]) \
-            -> Tuple[Union[float, torch.tensor], ...]:
-        """Override inference to pass surface_id correctly"""
-        # Pass the image and surface_id (if provided) to the interpreter
-        out = self.interpreter.predict(img_arr, other_arr)
-        return self.interpreter_to_output(out)  
 
 class Linear(nn.Module):
     def __init__(self):
@@ -384,14 +378,6 @@ class LinearMW(nn.Module):
         # During inference without surface: x is just the image tensor
         
         # Log training mode status occasionally
-        if not hasattr(self, '_mode_check_count'):
-            self._mode_check_count = 0
-        self._mode_check_count += 1
-        if self._mode_check_count % 100 == 1:
-            logger.info(f"LinearMW forward pass #{self._mode_check_count}: training={self.training}")
-            # Check subnetwork training mode
-            for i, subnet in enumerate(self.subnetworks):
-                logger.info(f"  Subnetwork {i}: training={subnet.training}")
         
         if isinstance(x, (tuple, list)):
             # Training/inference mode with surface_id provided
@@ -438,13 +424,6 @@ class LinearMW(nn.Module):
         
         # Ensure surface_idx is valid
         surface_idx = max(0, min(surface_idx, len(self.subnetworks) - 1))
-        
-        # Debug: log which subnetwork is being used (only occasionally to avoid spam)
-        if not hasattr(self, '_inference_count'):
-            self._inference_count = 0
-        self._inference_count += 1
-        if self._inference_count % 100 == 1:  # Log every 100 inferences
-            logger.info(f"LinearMW using subnetwork {surface_idx} (inference #{self._inference_count})")
         
         # Use the appropriate subnetwork based on surface_id
         return self.subnetworks[surface_idx](img)
