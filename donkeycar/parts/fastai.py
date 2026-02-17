@@ -35,6 +35,62 @@ XY = Union[float, np.ndarray, Tuple[Union[float, np.ndarray], ...]]
 
 logger = getLogger(__name__)
 
+class SimpleUncLoss(nn.Module):
+    """
+    Simple uncertainty loss that combines MSE with uncertainty calibration.
+    
+    The loss has three components:
+    1. MSE on predictions (angle and throttle means)
+    2. Uncertainty calibration: trains log_var to match actual squared errors
+    3. Variance regularization: prevents extreme variance values
+    """
+
+    def __init__(self, lambda_uncertainty: float = 0.8, var_reg: float = 0.01):
+        super().__init__()
+        self.lambda_uncertainty = lambda_uncertainty
+        self.var_reg = var_reg
+        
+    def forward(self, pred, target):
+        # pred has shape [batch_size, 4]: [angle_mean, throttle_mean, angle_log_var, throttle_log_var]
+        # target has shape [batch_size, 2]: [angle_target, throttle_target]
+        
+        angle_mean = pred[:, 0]
+        throttle_mean = pred[:, 1]
+        angle_log_var = pred[:, 2]
+        throttle_log_var = pred[:, 3]
+        
+        angle_target = target[:, 0]
+        throttle_target = target[:, 1]
+        
+        # Clamp log_var to prevent extreme values and numerical instability
+        # Range: exp(-10) ≈ 0.00005 to exp(2) ≈ 7.4
+        angle_log_var = torch.clamp(angle_log_var, -10, 2)
+        throttle_log_var = torch.clamp(throttle_log_var, -10, 2)
+        
+        # Component 1: MSE for predictions
+        angle_squared_error = (angle_mean - angle_target) ** 2
+        throttle_squared_error = (throttle_mean - throttle_target) ** 2
+        mse = angle_squared_error + throttle_squared_error
+        
+        # Component 2: Uncertainty calibration loss
+        # Train the log_var to match the actual log of squared errors
+        angle_unc_mse = (angle_log_var - torch.log(angle_squared_error + 1e-8))**2
+        throttle_unc_mse = (throttle_log_var - torch.log(throttle_squared_error + 1e-8))**2
+        unc_loss = angle_unc_mse + throttle_unc_mse
+        
+        # Component 3: Regularization to penalize extreme variances
+        # Encourages log_var to stay near 0 (variance near 1)
+        var_penalty = self.var_reg * (angle_log_var**2 + throttle_log_var**2)
+        
+        # Combine all components
+        total_loss = self.lambda_uncertainty * mse + (1 - self.lambda_uncertainty) * unc_loss + var_penalty
+        
+        # Check for NaN/inf to prevent lr_find crashes
+        result = torch.mean(total_loss)
+        if torch.isnan(result) or torch.isinf(result):
+            return torch.tensor(1e6, device=result.device, dtype=result.dtype)
+        return result
+
 
 class UncertaintyLoss(nn.Module):
     """
@@ -49,6 +105,12 @@ class UncertaintyLoss(nn.Module):
     
     This allows the model to learn both the prediction (mean) and its uncertainty (variance).
     """
+    def __init__(self, throttle_weight: float = 1.0, max_log_var: float = 1.0, min_log_var: float = -6.0):
+        super().__init__()
+        self.throttle_weight = throttle_weight
+        self.max_log_var = max_log_var
+        self.min_log_var = min_log_var
+    
     def forward(self, pred, target):
         # pred has shape [batch_size, 4]: [angle_mean, throttle_mean, angle_log_var, throttle_log_var]
         # target has shape [batch_size, 2]: [angle_target, throttle_target]
@@ -61,12 +123,26 @@ class UncertaintyLoss(nn.Module):
         angle_target = target[:, 0]
         throttle_target = target[:, 1]
         
+        # Clamp log_var to prevent extreme uncertainties
+        # min_log_var = -6 means min variance ≈ 0.0025 (very confident)
+        # max_log_var = 1 means max variance ≈ 2.7 (reasonable uncertainty)
+        angle_log_var = torch.clamp(angle_log_var, self.min_log_var, self.max_log_var)
+        throttle_log_var = torch.clamp(throttle_log_var, self.min_log_var, self.max_log_var)
+        
         # Negative Log-Likelihood for Gaussian distribution
         # NLL = 0.5 * log(σ²) + 0.5 * (y - μ)² / σ²
         angle_loss = 0.5 * angle_log_var + 0.5 * (angle_mean - angle_target) ** 2 * torch.exp(-angle_log_var)
         throttle_loss = 0.5 * throttle_log_var + 0.5 * (throttle_mean - throttle_target) ** 2 * torch.exp(-throttle_log_var)
         
-        return torch.mean(angle_loss + throttle_loss)
+        # Use configurable weight for throttle (default 1.0 for equal weighting)
+        total_loss = angle_loss + self.throttle_weight * throttle_loss
+        
+        # Add small epsilon and check for NaN/inf to prevent lr_find crashes
+        result = torch.mean(total_loss)
+        if torch.isnan(result) or torch.isinf(result):
+            # Return a large but finite loss instead of NaN
+            return torch.tensor(1e6, device=result.device, dtype=result.dtype)
+        return result
 
 
 class FastAiPilot(ABC):
@@ -244,10 +320,16 @@ class FastAiPilot(ABC):
         logger.info(self.learner.summary())
         logger.info(self.learner.loss_func)
 
-        lr_result = self.learner.lr_find()
-        suggestedLr = float(lr_result[0])
-
-        logger.info(f"Suggested Learning Rate {suggestedLr}")
+        # Try to find optimal learning rate, fallback to default if it fails
+        try:
+            lr_result = self.learner.lr_find()
+            suggestedLr = float(lr_result[0])
+            logger.info(f"Suggested Learning Rate {suggestedLr}")
+        except (IndexError, ValueError, RuntimeError) as e:
+            # lr_find failed (common with uncertainty models during early training)
+            # Use a reasonable default learning rate
+            suggestedLr = 1e-3
+            logger.warning(f"lr_find failed ({e}), using default learning rate: {suggestedLr}")
 
         self.learner.fit_one_cycle(epochs, suggestedLr, cbs=callbacks)
         
@@ -326,19 +408,60 @@ class FastAIUncertainty(FastAILinear):
     def __init__(self,
                  interpreter: Interpreter = FastAIInterpreter(),
                  input_shape: Tuple[int, ...] = (120, 160, 3),
-                 num_outputs: int = 4):
+                 num_outputs: int = 4,
+                 loss_type: str = 'nll',  # 'nll' or 'simple'
+                 lambda_uncertainty: float = 0.8,
+                 var_reg: float = 0.01,
+                 throttle_weight: float = 1.0,
+                 max_log_var: float = 1.0,
+                 min_log_var: float = -6.0):
+        """
+        Args:
+            loss_type: 'nll' for NegativeLogLikelihood or 'simple' for SimpleUncLoss
+            lambda_uncertainty: For SimpleUncLoss, balance between MSE and uncertainty (default 0.8)
+            var_reg: For SimpleUncLoss, variance regularization strength (default 0.01)
+            throttle_weight: For NLL, relative weight of throttle vs angle (default 1.0)
+            max_log_var: Maximum allowed log-variance (default 1.0, variance ≈ 2.7)
+            min_log_var: Minimum allowed log-variance (default -6.0, variance ≈ 0.0025)
+        """
         self.num_outputs = num_outputs
+        self.loss_type = loss_type
+        self.lambda_uncertainty = lambda_uncertainty
+        self.var_reg = var_reg
+        self.throttle_weight = throttle_weight
+        self.max_log_var = max_log_var
+        self.min_log_var = min_log_var
 
         super().__init__(interpreter, input_shape)
         # Set loss after super().__init__() to avoid it being overwritten
-        self.loss = UncertaintyLoss()
+        if loss_type == 'nll':
+            self.loss = UncertaintyLoss(
+                throttle_weight=self.throttle_weight,
+                max_log_var=self.max_log_var,
+                min_log_var=self.min_log_var
+            )
+        else:
+            self.loss = SimpleUncLoss(
+                lambda_uncertainty=self.lambda_uncertainty,
+                var_reg=self.var_reg
+            )
 
     def create_model(self):
         return LinearUncertainty()
     
     def compile(self):
         self.optimizer = self.optimizer
-        self.loss = UncertaintyLoss()
+        if self.loss_type == 'nll':
+            self.loss = UncertaintyLoss(
+                throttle_weight=self.throttle_weight,
+                max_log_var=self.max_log_var,
+                min_log_var=self.min_log_var
+            )
+        else:
+            self.loss = SimpleUncLoss(
+                lambda_uncertainty=self.lambda_uncertainty,
+                var_reg=self.var_reg
+            )
 
     def interpreter_to_output(self, interpreter_out):
         # Scale outputs from [0, 1] to [-1, 1] for angle and throttle
@@ -445,6 +568,22 @@ class LinearUncertainty(Linear):
         super().__init__()
         self.output1_uncertainty = nn.Linear(50, 1)
         self.output2_uncertainty = nn.Linear(50, 1)
+        
+        # Initialize uncertainty heads with small weights and reasonable bias
+        # This makes initial log_variance close to -1 (variance ≈ 0.37)
+        # Prevents starting with overly confident or overly uncertain predictions
+        with torch.no_grad():
+            self.output1_uncertainty.weight.normal_(0.0, 0.001)
+            self.output1_uncertainty.bias.fill_(-1.0)
+            self.output2_uncertainty.weight.normal_(0.0, 0.001)
+            self.output2_uncertainty.bias.fill_(-1.0)
+            
+            # Also ensure mean prediction heads have reasonable initialization
+            # to keep predictions in [0, 1] range initially
+            self.output1.weight.normal_(0.0, 0.01)
+            self.output1.bias.fill_(0.5)  # Center of [0, 1]
+            self.output2.weight.normal_(0.0, 0.01)
+            self.output2.bias.fill_(0.5)
 
     def forward(self, x):
         x = self.relu(self.conv24(x))
@@ -466,6 +605,16 @@ class LinearUncertainty(Linear):
         throttle = self.output2(x1)
         angle_uncertainty = self.output1_uncertainty(x1)
         throttle_uncertainty = self.output2_uncertainty(x1)
+        
+        # Clamp outputs to prevent extreme values during training
+        # Means should stay roughly in [0, 1] since targets are normalized to this range
+        angle = torch.clamp(angle, -0.5, 1.5)
+        throttle = torch.clamp(throttle, -0.5, 1.5)
+        
+        # Clamp uncertainties to prevent NaN during lr_find
+        angle_uncertainty = torch.clamp(angle_uncertainty, -10, 2)
+        throttle_uncertainty = torch.clamp(throttle_uncertainty, -10, 2)
+        
         return torch.cat((angle, throttle, angle_uncertainty, throttle_uncertainty), 1)
 
 class LinearMW(nn.Module):
