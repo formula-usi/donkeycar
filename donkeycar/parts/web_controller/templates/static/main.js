@@ -27,6 +27,7 @@ var driveHandler = new function() {
         'circuit': 'Default',
         'surface': 'Dry',
         'circuit_icon': '/static/images/default_circuit.png',
+        'circuit_changed': false,
 
         'buttons': {
             "w1": false,  // boolean; true is 'down' or pushed, false is 'up' or not pushed
@@ -139,14 +140,21 @@ var driveHandler = new function() {
         let changed = false;
         if(typeof data === 'object') {
             const keys = Object.keys(data)
+            // if (keys.includes('circuit_icon') || keys.includes('surface') || keys.includes('aiThrottleMul')) {
+            //    console.log(`Updating state with data: ${keys}`);
+            //    console.log('State at the beginning is:', state);
+            // }
 
             keys.forEach(key => {
+
                 //
                 // state must already have the key;
                 // we are not adding new fields to the state,
                 // we are only updating existing fields.
                 //
                 if(state.hasOwnProperty(key) && state[key] !== data[key]) {
+                  if(key === "aiThrottleMul") {
+                  }
                     if(typeof state[key] === 'object') {
                         // recursively update the state's object field
                         changed = updateState(state[key], data[key]) && changed;
@@ -165,7 +173,11 @@ var driveHandler = new function() {
                     }
                 }
             });
-        }
+        // if (keys.includes('circuit_icon') || keys.includes('surface') || keys.includes('aiThrottleMul')) {
+        //        console.log('State at the end is:', state);
+        //     }}
+          }
+         
         return changed;
     }
 
@@ -180,6 +192,21 @@ var driveHandler = new function() {
         if(updateState(state, data)) {
             updateUI();
         }
+
+        if (data.hasOwnProperty('circuit_changed')) {
+          ai_multiplier = state.aiThrottleMul;
+          temp_ai_multiplier = ai_multiplier * 0.5
+          updateState(state, {"aiThrottleMul": temp_ai_multiplier, "circuit_changed": true});
+          postDrive(['ai_throttle_update']);
+
+          // wait 2 seconds
+          setTimeout(function() {
+            updateState(state, {"aiThrottleMul": ai_multiplier, "circuit_changed": false});
+            postDrive(['ai_throttle_update']);
+
+          }, 1500);
+
+      };
       };
 
       $(document).keydown(function(e) {
