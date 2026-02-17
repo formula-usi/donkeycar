@@ -511,6 +511,13 @@ def get_model_by_type(model_type: str, cfg: 'Config') -> Union['KerasPilot', 'Fa
             from donkeycar.parts.fastai import FastAILinearMW
             n_weathers = getattr(cfg, 'N_WEATHERS', 3)
             return FastAILinearMW(interpreter=interpreter, input_shape=input_shape, n_weathers=n_weathers)
+        elif used_model_type == "linear_unc":
+            from donkeycar.parts.fastai import FastAIUncertainty
+            n_weathers = getattr(cfg, 'N_WEATHERS', 3)
+            return FastAIUncertainty(interpreter=interpreter, input_shape=input_shape)
+        # elif used_model_type == "linear_unc":
+        #     from donkeycar.parts.fastai import LinearUncertainty
+        #     return LinearUncertainty(interpreter=interpreter, input_shape=input_shape)
     else:
         interpreter = KerasInterpreter()
         used_model_type = model_type

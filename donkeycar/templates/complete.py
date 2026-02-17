@@ -14,6 +14,8 @@ Options:
     --myconfig=filename     Specify myconfig file to use. 
                             [default: myconfig.py]
 """
+from pyexpat import model
+from turtle import mode
 from docopt import docopt
 
 #
@@ -38,7 +40,6 @@ from donkeycar.parts.launch import AiLaunch
 from donkeycar.parts.dashboard_updater import DashboardUpdater
 from donkeycar.parts.speed_limiter import SpeedLimiter
 from donkeycar.parts.weather_applier import WeatherApplier
-from donkeycar.parts.surface_id_mapper import SurfaceIdMapper
 
 from donkeycar.parts.kinematics import NormalizeSteeringAngle, UnnormalizeSteeringAngle, TwoWheelSteeringThrottle
 from donkeycar.parts.kinematics import Unicycle, InverseUnicycle, UnicycleUnnormalizeAngularVelocity
@@ -391,9 +392,6 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
                   outputs=['imu_array'])
 
             inputs = ['cam/image_array', 'imu_array']
-
-        elif "mw" in model_type:
-            inputs = ['cam/image_array', 'surface_id']
         else:
             inputs = ['cam/image_array']
 
@@ -404,6 +402,9 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
 
         if cfg.TRAIN_LOCALIZER:
             outputs.append("pilot/loc")
+
+        if "unc" in model_type:
+            outputs += ['pilot/angle_unc', 'pilot/throttle_unc']
 
         #
         # Add image transformations like crop or trapezoidal mask
@@ -495,8 +496,8 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
         inputs = ['cam/image_array', 'lidar/dist_array', 'user/angle', 'user/throttle', 'user/mode']
         types = ['image_array', 'nparray','float', 'float', 'str']
     else:
-        inputs=['cam/image_array','user/angle', 'user/throttle', 'user/mode', "surface_id"]
-        types=['image_array','float', 'float','str', 'int']
+        inputs=['cam/image_array','user/angle', 'user/throttle', 'user/mode']
+        types=['image_array','float', 'float','str']
 
     if cfg.HAVE_ODOM:
         inputs += ['enc/speed']
@@ -777,8 +778,6 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
         inputs=[input_image, 'tub/num_records', 'user/mode', 'recording'],
         outputs=['user/steering', 'user/throttle', 'user/mode', 'recording', 'surface','web/buttons'],
         threaded=True)
-
-    V.add(SurfaceIdMapper(), inputs=['surface'], outputs=['surface_id'])
     if ctr == None:
         ctr = web_ctr
     for item in to_add:

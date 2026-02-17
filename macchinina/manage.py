@@ -14,6 +14,8 @@ Options:
     --myconfig=filename     Specify myconfig file to use. 
                             [default: myconfig.py]
 """
+from pyexpat import model
+from turtle import mode
 from docopt import docopt
 
 #
@@ -400,6 +402,9 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
 
         if cfg.TRAIN_LOCALIZER:
             outputs.append("pilot/loc")
+
+        if "unc" in model_type:
+            outputs += ['pilot/angle_unc', 'pilot/throttle_unc']
 
         #
         # Add image transformations like crop or trapezoidal mask

@@ -216,11 +216,11 @@ class FastAIInterpreter(Interpreter):
         if type(outputs) is list:
             # as we invoke the interpreter with a batch size of one we remove
             # the additional dimension here again
-            output = [output.numpy().squeeze(axis=0) for output in outputs]
+            output = [output.cpu().numpy().squeeze(axis=0) for output in outputs]
             return output
         # for sequential models the output shape is (1, n) with n = output dim
         else:
-            return outputs.detach().numpy().squeeze(axis=0)
+            return outputs.detach().cpu().numpy().squeeze(axis=0)
 
     def predict(self, img_arr: np.ndarray, other_arr: np.ndarray) \
             -> Sequence[Union[float, np.ndarray]]:

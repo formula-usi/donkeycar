@@ -144,6 +144,12 @@ def train(cfg: Config, tub_paths: str, model: str = None,
         else:
             dataset_train = TorchTubDataset(cfg, training_records, transform=transform)
             dataset_validate = TorchTubDataset(cfg, validation_records, transform=transform)
+
+        # Store the names of the validation records in a json file with the same name as the model, but in json format
+        import json
+        val_record_indexes = [record.__dict__['underlying']['_index'] for record in validation_records]
+        with open(f'{base_path}_validation_records.json', 'w') as f:
+            json.dump(val_record_indexes, f)
         
         train_size = len(training_records)
         val_size = len(validation_records)

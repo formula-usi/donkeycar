@@ -26,7 +26,6 @@ from fastai.vision.all import *
 from fastai.data.transforms import *
 from fastai import optimizer as fastai_optimizer
 from torch.utils.data import IterableDataset, DataLoader
-
 from torchvision import transforms
 
 ONE_BYTE_SCALE = 1.0 / 255.0
@@ -35,6 +34,39 @@ ONE_BYTE_SCALE = 1.0 / 255.0
 XY = Union[float, np.ndarray, Tuple[Union[float, np.ndarray], ...]]
 
 logger = getLogger(__name__)
+
+
+class UncertaintyLoss(nn.Module):
+    """
+    Negative Log-Likelihood loss for Gaussian distributions.
+    
+    The model predicts [angle_mean, throttle_mean, angle_log_var, throttle_log_var]
+    where log_var = log(σ²) is the log-variance.
+    
+    For a Gaussian distribution N(μ, σ²), the NLL is:
+        NLL = 0.5 * log(σ²) + 0.5 * (y - μ)² / σ²
+            = 0.5 * log_var + 0.5 * (y - μ)² * exp(-log_var)
+    
+    This allows the model to learn both the prediction (mean) and its uncertainty (variance).
+    """
+    def forward(self, pred, target):
+        # pred has shape [batch_size, 4]: [angle_mean, throttle_mean, angle_log_var, throttle_log_var]
+        # target has shape [batch_size, 2]: [angle_target, throttle_target]
+        
+        angle_mean = pred[:, 0]
+        throttle_mean = pred[:, 1]
+        angle_log_var = pred[:, 2]
+        throttle_log_var = pred[:, 3]
+        
+        angle_target = target[:, 0]
+        throttle_target = target[:, 1]
+        
+        # Negative Log-Likelihood for Gaussian distribution
+        # NLL = 0.5 * log(σ²) + 0.5 * (y - μ)² / σ²
+        angle_loss = 0.5 * angle_log_var + 0.5 * (angle_mean - angle_target) ** 2 * torch.exp(-angle_log_var)
+        throttle_loss = 0.5 * throttle_log_var + 0.5 * (throttle_mean - throttle_target) ** 2 * torch.exp(-throttle_log_var)
+        
+        return torch.mean(angle_loss + throttle_loss)
 
 
 class FastAiPilot(ABC):
@@ -281,6 +313,48 @@ class FastAILinear(FastAiPilot):
         img_shape = self.get_input_shape('img')[1:]
         return img_shape
 
+class FastAIUncertainty(FastAILinear):
+    """
+    The FastAIUncertainty pilot predicts Gaussian distributions for steering and throttle.
+    
+    Outputs 4 values: [angle_mean, throttle_mean, angle_log_variance, throttle_log_variance]
+    - The means are the actual predictions used for control
+    - The log-variances represent the uncertainty/confidence in each prediction
+    - Higher variance = less confident prediction
+    """
+
+    def __init__(self,
+                 interpreter: Interpreter = FastAIInterpreter(),
+                 input_shape: Tuple[int, ...] = (120, 160, 3),
+                 num_outputs: int = 4):
+        self.num_outputs = num_outputs
+
+        super().__init__(interpreter, input_shape)
+        # Set loss after super().__init__() to avoid it being overwritten
+        self.loss = UncertaintyLoss()
+
+    def create_model(self):
+        return LinearUncertainty()
+    
+    def compile(self):
+        self.optimizer = self.optimizer
+        self.loss = UncertaintyLoss()
+
+    def interpreter_to_output(self, interpreter_out):
+        # Scale outputs from [0, 1] to [-1, 1] for angle and throttle
+        # Note: log_variance is already in the correct scale (can be any real number)
+        angle_mean = (interpreter_out[0] * 2) - 1
+        throttle_mean = (interpreter_out[1] * 2) - 1
+        angle_log_var = interpreter_out[2]
+        throttle_log_var = interpreter_out[3]
+        
+        # Convert log-variance to standard deviation for easier interpretation
+        # Use numpy operations since interpreter_out is numpy array
+        angle_std = np.sqrt(np.exp(angle_log_var))
+        throttle_std = np.sqrt(np.exp(throttle_log_var))
+        
+        return angle_mean, throttle_mean, angle_std, throttle_std
+
 class FastAILinearMW(FastAILinear):
     """
     The FastAILinearMW pilot uses one subnetwork per weather condition. Each
@@ -366,6 +440,34 @@ class Linear(nn.Module):
         throttle = self.output2(x1)
         return torch.cat((angle, throttle), 1)
 
+class LinearUncertainty(Linear):
+    def __init__(self):
+        super().__init__()
+        self.output1_uncertainty = nn.Linear(50, 1)
+        self.output2_uncertainty = nn.Linear(50, 1)
+
+    def forward(self, x):
+        x = self.relu(self.conv24(x))
+        x = self.drop(x)
+        x = self.relu(self.conv32(x))
+        x = self.drop(x)
+        x = self.relu(self.conv64_5(x))
+        x = self.drop(x)
+        x = self.relu(self.conv64_3(x))
+        x = self.drop(x)
+        x = self.relu(self.conv64_3(x))
+        x = self.drop(x)
+        x = self.flatten(x)
+        x = self.fc1(x)
+        x = self.drop(x)
+        x = self.fc2(x)
+        x1 = self.drop(x)
+        angle = self.output1(x1)
+        throttle = self.output2(x1)
+        angle_uncertainty = self.output1_uncertainty(x1)
+        throttle_uncertainty = self.output2_uncertainty(x1)
+        return torch.cat((angle, throttle, angle_uncertainty, throttle_uncertainty), 1)
+
 class LinearMW(nn.Module):
     def __init__(self, n_weathers = 3):
         super().__init__()
@@ -427,3 +529,8 @@ class LinearMW(nn.Module):
         
         # Use the appropriate subnetwork based on surface_id
         return self.subnetworks[surface_idx](img)
+    
+class LinearMWUncertainty(LinearMW):
+    def __init__(self, n_weathers = 3):
+        super().__init__(n_weathers)
+        self.subnetworks = nn.ModuleList([LinearUncertainty() for _ in range(n_weathers)])
