@@ -130,6 +130,7 @@ class LocalWebController(tornado.web.Application):
         self.circuit = "Default"
         self.surface = "Dry"
         self.circuit_icon = "/static/images/default_circuit.png"  # For blob image data
+        self.circuit_changed = False
 
         self.num_records = 0
         self.wsclients = []
@@ -707,6 +708,9 @@ class CircuitAPI(RequestHandler):
         if data.get('circuit_icon') is not None:
             self.application.circuit_icon = data['circuit_icon']
             changes['circuit_icon'] = self.application.circuit_icon
+        if data.get('circuit_changed') is not None:
+            self.application.circuit_changed = data['circuit_changed']
+            changes['circuit_changed'] = self.application.circuit_changed
             
         # Send updates to WebSocket clients
         if changes:
