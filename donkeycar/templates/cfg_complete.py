@@ -764,3 +764,11 @@ FPS_DEBUG_INTERVAL = 10    # the interval in seconds for printing the frequency 
 # PI connection
 PI_USERNAME = "pi"
 PI_HOSTNAME = "donkeypi.local"
+
+
+# Model Takeover
+
+MODEL_TAKEOVER = False
+MODEL_TAKEOVER_ANGLE_UNC_THRESHOLD = 0.27
+MODEL_TAKEOVER_THROTTLE_UNC_THRESHOLD = 0.27
+MODEL_TAKEOVER_DEFAULT_THROTTLE = 0.2
