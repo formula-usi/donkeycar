@@ -683,3 +683,60 @@ class LinearMWUncertainty(LinearMW):
     def __init__(self, n_weathers = 3):
         super().__init__(n_weathers)
         self.subnetworks = nn.ModuleList([LinearUncertainty() for _ in range(n_weathers)])
+
+class FastAILinearMWUncertainty(FastAIUncertainty):
+    """
+    The FastAILinearMWUncertainty pilot uses one LinearUncertainty subnetwork per weather condition.
+    Each subnetwork predicts steering, throttle, and their uncertainties.
+    
+    Outputs 4 values per prediction: [angle_mean, throttle_mean, angle_std, throttle_std]
+    """
+
+    def __init__(self,
+                 interpreter: Interpreter = FastAIInterpreter(),
+                 input_shape: Tuple[int, ...] = (120, 160, 3),
+                 num_outputs: int = 4,
+                 n_weathers: int = 3,
+                 surface_id: int = 0,
+                 loss_type: str = 'nll',
+                 lambda_uncertainty: float = 0.8,
+                 var_reg: float = 0.01,
+                 throttle_weight: float = 1.0,
+                 max_log_var: float = 1.0,
+                 min_log_var: float = -6.0):
+        self.n_weathers = n_weathers
+        self.surface_id = surface_id  # Default surface for inference
+        super().__init__(interpreter, input_shape, num_outputs, loss_type, 
+                         lambda_uncertainty, var_reg, throttle_weight, 
+                         max_log_var, min_log_var)
+
+    def create_model(self):
+        return LinearMWUncertainty(self.n_weathers)
+    
+    def set_surface_id(self, surface_id: int) -> None:
+        """Set the current surface/weather condition for inference"""
+        if surface_id >= self.n_weathers:
+            logger.warning(f"Surface ID {surface_id} exceeds number of weathers {self.n_weathers}, using 0")
+            surface_id = 0
+        self.surface_id = surface_id
+        # Update the model's surface_id for inference
+        if hasattr(self.interpreter, 'model') and self.interpreter.model is not None:
+            self.interpreter.model.inference_surface_id = surface_id
+    
+    def run(self, img_arr: np.ndarray, other_arr: List[float] = None) \
+            -> Tuple[Union[float, torch.tensor], ...]:
+        """
+        Override run to handle surface_id as integer (not float).
+        If other_arr is provided, it's assumed to be [surface_id] or surface_id.
+        """
+        transform = get_default_transform(resize=False)
+        norm_arr = transform(img_arr)
+        
+        # If other_arr is provided, use it as surface_id (convert to LongTensor)
+        if other_arr is not None:
+            surface_id_value = other_arr[0] if isinstance(other_arr, list) else other_arr
+            tensor_other_array = torch.LongTensor([int(surface_id_value)])
+        else:
+            tensor_other_array = None
+        
+        return self.inference(norm_arr, tensor_other_array)

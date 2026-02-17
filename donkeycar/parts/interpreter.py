@@ -236,12 +236,14 @@ class FastAIInterpreter(Interpreter):
         from donkeycar.parts import fastai
         
         # Create a temporary module mapping to handle models saved from __main__
-        # This allows loading models where LinearMW/Linear were defined in __main__
+        # This allows loading models where LinearMW/Linear/LinearUncertainty/LinearMWUncertainty were defined in __main__
         class ModuleMapper:
             def __init__(self):
                 self.fastai = fastai
                 self.Linear = fastai.Linear
                 self.LinearMW = fastai.LinearMW
+                self.LinearUncertainty = fastai.LinearUncertainty
+                self.LinearMWUncertainty = fastai.LinearMWUncertainty
         
         # Inject the module mapper into sys.modules temporarily
         old_main = sys.modules.get('__main__')
@@ -250,6 +252,8 @@ class FastAIInterpreter(Interpreter):
             if not hasattr(old_main, 'LinearMW'):
                 sys.modules['__main__'].Linear = fastai.Linear
                 sys.modules['__main__'].LinearMW = fastai.LinearMW
+                sys.modules['__main__'].LinearUncertainty = fastai.LinearUncertainty
+                sys.modules['__main__'].LinearMWUncertainty = fastai.LinearMWUncertainty
             
             logger.info(f'Loading model {model_path}')
             if torch.cuda.is_available():
@@ -267,6 +271,10 @@ class FastAIInterpreter(Interpreter):
                     delattr(sys.modules['__main__'], 'Linear')
                 if hasattr(sys.modules['__main__'], 'LinearMW'):
                     delattr(sys.modules['__main__'], 'LinearMW')
+                if hasattr(sys.modules['__main__'], 'LinearUncertainty'):
+                    delattr(sys.modules['__main__'], 'LinearUncertainty')
+                if hasattr(sys.modules['__main__'], 'LinearMWUncertainty'):
+                    delattr(sys.modules['__main__'], 'LinearMWUncertainty')
 
     def summary(self) -> str:
         return self.model
