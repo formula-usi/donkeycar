@@ -566,8 +566,8 @@ class Linear(nn.Module):
 class LinearUncertainty(Linear):
     def __init__(self):
         super().__init__()
-        self.output1_uncertainty = nn.Linear(50, 1)
-        self.output2_uncertainty = nn.Linear(50, 1)
+        self.output1_uncertainty = nn.Linear(50+1, 1)
+        self.output2_uncertainty = nn.Linear(50+1, 1)
         
         # Initialize uncertainty heads with small weights and reasonable bias
         # This makes initial log_variance close to -1 (variance ≈ 0.37)
@@ -603,8 +603,8 @@ class LinearUncertainty(Linear):
         x1 = self.drop(x)
         angle = self.output1(x1)
         throttle = self.output2(x1)
-        angle_uncertainty = self.output1_uncertainty(x1)
-        throttle_uncertainty = self.output2_uncertainty(x1)
+        angle_uncertainty = self.output1_uncertainty(torch.cat([x1, angle], dim=1))
+        throttle_uncertainty = self.output2_uncertainty(torch.cat([x1, throttle], dim=1))
         
         # Clamp outputs to prevent extreme values during training
         # Means should stay roughly in [0, 1] since targets are normalized to this range
