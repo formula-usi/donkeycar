@@ -21,7 +21,7 @@ class DirectionEstimator(object):
 
         # If average angle is negative, set the multiplier to -1, otherwise set it to 1
         multiplier = -1 if avg_angle < 0 else 1
-        return multiplier
+        return -multiplier
 
     def shutdown(self):
         pass
