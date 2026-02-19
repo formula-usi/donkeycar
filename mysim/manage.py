@@ -38,6 +38,7 @@ from donkeycar.parts.launch import AiLaunch
 from donkeycar.parts.dashboard_updater import DashboardUpdater
 from donkeycar.parts.speed_limiter import SpeedLimiter
 from donkeycar.parts.weather_applier import WeatherApplier
+from donkeycar.parts.surface_id_mapper import SurfaceIdMapper
 
 from donkeycar.parts.kinematics import NormalizeSteeringAngle, UnnormalizeSteeringAngle, TwoWheelSteeringThrottle
 from donkeycar.parts.kinematics import Unicycle, InverseUnicycle, UnicycleUnnormalizeAngularVelocity
@@ -390,6 +391,9 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
                   outputs=['imu_array'])
 
             inputs = ['cam/image_array', 'imu_array']
+
+        elif "mw" in model_type:
+            inputs = ['cam/image_array', 'surface_id']
         else:
             inputs = ['cam/image_array']
 
@@ -773,6 +777,8 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
         inputs=[input_image, 'tub/num_records', 'user/mode', 'recording'],
         outputs=['user/steering', 'user/throttle', 'user/mode', 'recording', 'surface','web/buttons'],
         threaded=True)
+
+    V.add(SurfaceIdMapper(), inputs=['surface'], outputs=['surface_id'])
     if ctr == None:
         ctr = web_ctr
     for item in to_add:

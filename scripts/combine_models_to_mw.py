@@ -3,9 +3,12 @@
 Script to combine 3 Linear models into a LinearMW model.
 This allows testing LinearMW inference with known-good weights.
 
+Also supports combining LinearUncertainty models into LinearMWUncertainty models.
+
 Usage:
     python combine_models_to_mw.py --dry model.pt --output output_mw.pt
     python combine_models_to_mw.py --dry dry.pt --wet wet.pt --icy icy.pt --output output_mw.pt
+    python combine_models_to_mw.py --dry dry_unc.pt --wet wet_unc.pt --icy icy_unc.pt --output output_mw_unc.pt --uncertainty
 """
 import sys
 import torch
@@ -15,7 +18,7 @@ import torch.nn as nn
 import pickle
 import io
 
-# Recreate the Linear and LinearMW classes locally to avoid donkeycar import issues
+# Recreate the Linear, LinearMW, LinearUncertainty, and LinearMWUncertainty classes locally to avoid donkeycar import issues
 
 class Linear(nn.Module):
     def __init__(self):
@@ -53,6 +56,52 @@ class Linear(nn.Module):
         angle = self.output1(x1)
         throttle = self.output2(x1)
         return torch.cat((angle, throttle), 1)
+
+class LinearUncertainty(Linear):
+    def __init__(self):
+        super().__init__()
+        self.output1_uncertainty = nn.Linear(50, 1)
+        self.output2_uncertainty = nn.Linear(50, 1)
+        
+        # Initialize uncertainty heads with small weights and reasonable bias
+        with torch.no_grad():
+            self.output1_uncertainty.weight.normal_(0.0, 0.001)
+            self.output1_uncertainty.bias.fill_(-1.0)
+            self.output2_uncertainty.weight.normal_(0.0, 0.001)
+            self.output2_uncertainty.bias.fill_(-1.0)
+            
+            self.output1.weight.normal_(0.0, 0.01)
+            self.output1.bias.fill_(0.5)
+            self.output2.weight.normal_(0.0, 0.01)
+            self.output2.bias.fill_(0.5)
+
+    def forward(self, x):
+        x = self.relu(self.conv24(x))
+        x = self.drop(x)
+        x = self.relu(self.conv32(x))
+        x = self.drop(x)
+        x = self.relu(self.conv64_5(x))
+        x = self.drop(x)
+        x = self.relu(self.conv64_3(x))
+        x = self.drop(x)
+        x = self.relu(self.conv64_3(x))
+        x = self.drop(x)
+        x = self.flatten(x)
+        x = self.fc1(x)
+        x = self.drop(x)
+        x = self.fc2(x)
+        x1 = self.drop(x)
+        angle = self.output1(x1)
+        throttle = self.output2(x1)
+        angle_uncertainty = self.output1_uncertainty(x1)
+        throttle_uncertainty = self.output2_uncertainty(x1)
+        
+        angle = torch.clamp(angle, -0.5, 1.5)
+        throttle = torch.clamp(throttle, -0.5, 1.5)
+        angle_uncertainty = torch.clamp(angle_uncertainty, -10, 2)
+        throttle_uncertainty = torch.clamp(throttle_uncertainty, -10, 2)
+        
+        return torch.cat((angle, throttle, angle_uncertainty, throttle_uncertainty), 1)
 
 class LinearMW(nn.Module):
     def __init__(self, n_weathers = 3):
@@ -96,26 +145,33 @@ class LinearMW(nn.Module):
         surface_idx = max(0, min(surface_idx, len(self.subnetworks) - 1))
         return self.subnetworks[surface_idx](img)
 
-def combine_models(model_paths, output_path, n_weathers=3):
+class LinearMWUncertainty(LinearMW):
+    def __init__(self, n_weathers = 3):
+        super().__init__(n_weathers)
+        self.subnetworks = nn.ModuleList([LinearUncertainty() for _ in range(n_weathers)])
+
+def combine_models(model_paths, output_path, n_weathers=3, uncertainty=False):
     """
-    Combine individual Linear models into a LinearMW model.
+    Combine individual Linear/LinearUncertainty models into a LinearMW/LinearMWUncertainty model.
     
     Args:
-        model_paths: List of paths to Linear model files (can be less than n_weathers)
-        output_path: Path to save the combined LinearMW model
+        model_paths: List of paths to Linear/LinearUncertainty model files (can be less than n_weathers)
+        output_path: Path to save the combined LinearMW/LinearMWUncertainty model
         n_weathers: Number of subnetworks (default 3)
+        uncertainty: If True, combine LinearUncertainty models into LinearMWUncertainty
     """
     if len(model_paths) > n_weathers:
         print(f"Error: Too many model paths ({len(model_paths)}) for {n_weathers} subnetworks")
         return False
     
-    print(f"Creating LinearMW with {n_weathers} subnetworks...")
-    combined_model = LinearMW(n_weathers=n_weathers)
+    model_type = "LinearMWUncertainty" if uncertainty else "LinearMW"
+    print(f"Creating {model_type} with {n_weathers} subnetworks...")
+    combined_model = LinearMWUncertainty(n_weathers=n_weathers) if uncertainty else LinearMW(n_weathers=n_weathers)
     
     if len(model_paths) < n_weathers:
         print(f"Note: Only {len(model_paths)} models provided. Subnetworks {len(model_paths)}-{n_weathers-1} will be randomly initialized.")
     
-    # Custom unpickler to redirect donkeycar.parts.fastai.Linear to our local Linear
+    # Custom unpickler to redirect donkeycar.parts.fastai classes to our local versions
     class RemappingUnpickler(pickle.Unpickler):           
         def find_class(self, module, name):
             # Redirect donkeycar classes to our local versions
@@ -124,6 +180,10 @@ def combine_models(model_paths, output_path, n_weathers=3):
                     return Linear
                 elif name == 'LinearMW':
                     return LinearMW
+                elif name == 'LinearUncertainty':
+                    return LinearUncertainty
+                elif name == 'LinearMWUncertainty':
+                    return LinearMWUncertainty
             # For everything else, use the default
             return super().find_class(module, name)
     
@@ -135,6 +195,8 @@ def combine_models(model_paths, output_path, n_weathers=3):
             if name == 'donkeycar.parts.fastai':
                 self.Linear = Linear
                 self.LinearMW = LinearMW
+                self.LinearUncertainty = LinearUncertainty
+                self.LinearMWUncertainty = LinearMWUncertainty
         
         def __getattr__(self, name):
             # Return a dummy for anything else
@@ -227,7 +289,7 @@ def combine_models(model_paths, output_path, n_weathers=3):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Combine Linear models into a LinearMW multi-weather model',
+        description='Combine Linear/LinearUncertainty models into a LinearMW/LinearMWUncertainty multi-weather model',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -239,17 +301,22 @@ Examples:
   
   # Load all three subnetworks:
   python combine_models_to_mw.py --dry models/dry.pt --wet models/wet.pt --icy models/icy.pt --output models/full_mw.pt
+  
+  # Combine uncertainty models (with --uncertainty flag):
+  python combine_models_to_mw.py --dry models/dry_unc.pt --wet models/wet_unc.pt --icy models/icy_unc.pt --output models/full_mw_unc.pt --uncertainty
         """
     )
     
     parser.add_argument('--dry', type=str, default=None,
-                        help='Path to Linear model for dry surface (subnetwork 0)')
+                        help='Path to Linear/LinearUncertainty model for dry surface (subnetwork 0)')
     parser.add_argument('--wet', type=str, default=None,
-                        help='Path to Linear model for wet surface (subnetwork 1)')
+                        help='Path to Linear/LinearUncertainty model for wet surface (subnetwork 1)')
     parser.add_argument('--icy', type=str, default=None,
-                        help='Path to Linear model for icy surface (subnetwork 2)')
+                        help='Path to Linear/LinearUncertainty model for icy surface (subnetwork 2)')
     parser.add_argument('--output', type=str, required=True,
-                        help='Output path for combined LinearMW model')
+                        help='Output path for combined LinearMW/LinearMWUncertainty model')
+    parser.add_argument('--uncertainty', action='store_true',
+                        help='Combine LinearUncertainty models into LinearMWUncertainty (default: combine Linear models into LinearMW)')
     
     args = parser.parse_args()
     
@@ -267,22 +334,26 @@ Examples:
     if len(model_paths) == 0:
         parser.error("At least --dry must be specified")
     
+    model_type = "LinearUncertainty" if args.uncertainty else "Linear"
+    output_type = "LinearMWUncertainty" if args.uncertainty else "LinearMW"
+    
     print("=" * 70)
-    print("Linear to LinearMW Model Combiner")
+    print(f"{model_type} to {output_type} Model Combiner")
     print("=" * 70)
     print(f"\nSubnetwork 0 (dry): {args.dry if args.dry else 'Random'}")
     print(f"Subnetwork 1 (wet): {args.wet if args.wet else 'Random'}")
     print(f"Subnetwork 2 (icy): {args.icy if args.icy else 'Random'}")
     print(f"Output: {args.output}\n")
     
-    success = combine_models(model_paths, args.output)
+    success = combine_models(model_paths, args.output, uncertainty=args.uncertainty)
     
     if success:
         print("\n" + "=" * 70)
         print("SUCCESS! Combined model created.")
         print("=" * 70)
         print(f"\nYou can now test it with:")
-        print(f"  python manage.py drive --model={args.output} --type=fastai_linear_mw")
+        model_type_flag = "fastai_linear_mw_unc" if args.uncertainty else "fastai_linear_mw"
+        print(f"  python manage.py drive --model={args.output} --type={model_type_flag}")
     else:
         print("\nFailed to create combined model.")
         sys.exit(1)

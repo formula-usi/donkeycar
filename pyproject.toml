@@ -40,6 +40,8 @@ dependencies = [
     "utm",
     "pandas",
     "pyyaml",
+    "onnx",
+    "onnx-tf",
 ]
 
 [project.urls]

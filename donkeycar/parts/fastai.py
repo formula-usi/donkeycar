@@ -27,6 +27,8 @@ from fastai.data.transforms import *
 from fastai import optimizer as fastai_optimizer
 from torch.utils.data import IterableDataset, DataLoader
 from torchvision import transforms
+from torch.nn.modules.loss import GaussianNLLLoss, _Loss
+from torch.nn import functional as F
 
 ONE_BYTE_SCALE = 1.0 / 255.0
 
@@ -91,6 +93,28 @@ class SimpleUncLoss(nn.Module):
             return torch.tensor(1e6, device=result.device, dtype=result.dtype)
         return result
 
+
+class NLLLoss(_Loss):
+
+    def __init__(
+        self, *, full: bool = False, eps: float = 1e-6, reduction: str = "mean"
+    ) -> None:
+        super().__init__(None, None, reduction)
+        self.full = full
+        self.eps = eps
+
+    def forward(self, pred, target):
+        
+        angle_mean = pred[:, 0]
+        throttle_mean = pred[:, 1]
+        angle_var = torch.exp(pred[:, 2])**2
+        throttle_var = torch.exp(pred[:, 3])**2
+        angle_target = target[:, 0]
+        throttle_target = target[:, 1]
+
+        return (F.gaussian_nll_loss(
+            angle_mean, angle_target, angle_var, full=self.full, eps=self.eps, reduction=self.reduction) +  F.gaussian_nll_loss(throttle_mean, throttle_target, throttle_var, full=self.full, eps=self.eps, reduction=self.reduction))/2
+               
 
 class UncertaintyLoss(nn.Module):
     """
@@ -434,12 +458,14 @@ class FastAIUncertainty(FastAILinear):
 
         super().__init__(interpreter, input_shape)
         # Set loss after super().__init__() to avoid it being overwritten
-        if loss_type == 'nll':
+        if loss_type == 'unc':
             self.loss = UncertaintyLoss(
                 throttle_weight=self.throttle_weight,
                 max_log_var=self.max_log_var,
                 min_log_var=self.min_log_var
             )
+        elif loss_type == 'nll':
+            self.loss = NLLLoss()
         else:
             self.loss = SimpleUncLoss(
                 lambda_uncertainty=self.lambda_uncertainty,
