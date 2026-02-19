@@ -211,7 +211,11 @@ class FastAIInterpreter(Interpreter):
         pass
 
     def invoke(self, inputs):
-        outputs = self.model(inputs)
+        import torch
+        # Ensure model is in eval mode for inference (disables dropout, batchnorm updates)
+        self.model.eval()
+        with torch.no_grad():  # Disable gradient computation for inference
+            outputs = self.model(inputs)
         # for functional models the output here is a list
         if type(outputs) is list:
             # as we invoke the interpreter with a batch size of one we remove

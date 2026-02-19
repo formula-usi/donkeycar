@@ -519,6 +519,30 @@ def get_model_by_type(model_type: str, cfg: 'Config') -> Union['KerasPilot', 'Fa
             from donkeycar.parts.fastai import FastAILinearMWUncertainty
             n_weathers = getattr(cfg, 'N_WEATHERS', 3)
             return FastAILinearMWUncertainty(interpreter=interpreter, input_shape=input_shape, n_weathers=n_weathers)
+        elif used_model_type == "mobilenet":
+            from donkeycar.parts.mobilenet import FastAIMobileNet
+            freeze_backbone = getattr(cfg, 'MOBILENET_FREEZE_BACKBONE', True)
+            dropout = getattr(cfg, 'MOBILENET_DROPOUT', 0.2)
+            pretrained = getattr(cfg, 'MOBILENET_PRETRAINED', True)
+            use_imagenet_norm = getattr(cfg, 'MOBILENET_USE_IMAGENET_NORM', True)
+            auto_resize = getattr(cfg, 'MOBILENET_AUTO_RESIZE_224', True)
+            return FastAIMobileNet(interpreter=interpreter, input_shape=input_shape,
+                                 freeze_backbone=freeze_backbone, dropout=dropout,
+                                 pretrained=pretrained, use_imagenet_normalization=use_imagenet_norm,
+                                 auto_resize_224=auto_resize)
+        elif used_model_type == "mobilenet_unc":
+            from donkeycar.parts.mobilenet import FastAIMobileNetUncertainty
+            freeze_backbone = getattr(cfg, 'MOBILENET_FREEZE_BACKBONE', True)
+            dropout = getattr(cfg, 'MOBILENET_DROPOUT', 0.2)
+            pretrained = getattr(cfg, 'MOBILENET_PRETRAINED', True)
+            loss_type = getattr(cfg, 'MOBILENET_LOSS_TYPE', 'nll')
+            use_imagenet_norm = getattr(cfg, 'MOBILENET_USE_IMAGENET_NORM', True)
+            auto_resize = getattr(cfg, 'MOBILENET_AUTO_RESIZE_224', True)
+            return FastAIMobileNetUncertainty(interpreter=interpreter, input_shape=input_shape,
+                                            freeze_backbone=freeze_backbone, dropout=dropout,
+                                            pretrained=pretrained, loss_type=loss_type,
+                                            use_imagenet_normalization=use_imagenet_norm,
+                                            auto_resize_224=auto_resize)
         # elif used_model_type == "linear_unc":
         #     from donkeycar.parts.fastai import LinearUncertainty
         #     return LinearUncertainty(interpreter=interpreter, input_shape=input_shape)

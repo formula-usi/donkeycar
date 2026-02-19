@@ -135,7 +135,13 @@ def train(cfg: Config, tub_paths: str, model: str = None,
     if 'fastai_' in model_type:
         from donkeycar.parts.pytorch.torch_data \
             import TorchTubDataset, TorchTubDatasetWithSurface, get_default_transform
-        transform = get_default_transform(resize=False)
+        
+        # Check if model provides custom transform (e.g., MobileNet with auto-resize)
+        if hasattr(kl, 'get_train_transform'):
+            transform = kl.get_train_transform()
+            logger.info(f'Using model-specific transform: {transform}')
+        else:
+            transform = get_default_transform(resize=False)
         
         # Use TorchTubDatasetWithSurface for multi-weather models
         if 'mw' in model_type.lower():

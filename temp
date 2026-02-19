@@ -1,1 +1,6 @@
-python train.py --tub data --model models/torcione.pt --type fastai_linear
+python scripts/combine_models_to_mw.py \
+  --dry models_unc/test_unc_dry.pt \
+  --wet models_unc/test_unc_wet.pt \
+  --icy models_unc/test_unc_icy.pt \
+  --output models_unc/full_mw_unc.pt \
+  --uncertainty --onnx 

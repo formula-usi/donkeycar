@@ -29,6 +29,9 @@ COPY pyproject.toml .
 # Settung up the virtual environment
 RUN ./setup_uv.sh --platform ngc --extras torch_spark
 
+# Upgrade ml_dtypes for ONNX export (conflicts with tensorflow but works at runtime)
+RUN .venv/bin/pip install "ml_dtypes>=0.5.0"
+
 # Activate the virtual environment and add alias to check if there is GPU
 RUN echo "source .venv/bin/activate" >> /home/$USERNAME/.bashrc
 # RUN echo 'alias hasgpu="python -c '\''import tensorflow as tf; print(tf.config.list_physical_devices(\"GPU\"))'\''"' >> /home/$USERNAME/.bashrc
