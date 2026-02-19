@@ -482,6 +482,24 @@ class FastAIMobileNetUncertainty(FastAILinear):
         else:
             # Otherwise use the configured input shape
             return self.get_input_shape('img')[1:]
+    
+    def interpreter_to_output(self, interpreter_out):
+        """
+        Convert raw model outputs to final outputs with uncertainties.
+        
+        The model outputs [angle, throttle, angle_log_var, throttle_log_var] in [0, 1] range.
+        We need to:
+        1. Scale angle and throttle from [0, 1] to [-1, 1]
+        2. Convert log-variance to standard deviation
+        
+        Args:
+            interpreter_out: Raw model output [angle, throttle, angle_log_var, throttle_log_var]
+            
+        Returns:
+            (angle_mean, throttle_mean, angle_std, throttle_std)
+        """
+        # Scale outputs from [0, 1] to [-1, 1] for angle and throttle
+        angle_mean = (interpreter_out[0] * 2) - 1
         throttle_mean = (interpreter_out[1] * 2) - 1
         
         # Convert log-variance to standard deviation
