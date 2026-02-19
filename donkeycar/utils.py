@@ -504,6 +504,7 @@ def get_model_by_type(model_type: str, cfg: 'Config') -> Union['KerasPilot', 'Fa
     elif 'fastai_' in model_type:
         interpreter = FastAIInterpreter()
         used_model_type = model_type.replace('fastai_', '')
+        print(used_model_type)
         if used_model_type == "linear":
             from donkeycar.parts.fastai import FastAILinear
             return FastAILinear(interpreter=interpreter, input_shape=input_shape)

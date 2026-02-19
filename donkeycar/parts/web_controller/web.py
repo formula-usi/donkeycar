@@ -713,6 +713,7 @@ class CircuitAPI(RequestHandler):
             changes['circuit_changed'] = self.application.circuit_changed
             
         # Send updates to WebSocket clients
+        print(changes)
         if changes:
             logger.info(f"CircuitAPI broadcasting changes: {changes}")
             self.application.send_websocket_data(changes)
