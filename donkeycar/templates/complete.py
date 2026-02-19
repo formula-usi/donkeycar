@@ -39,6 +39,8 @@ from donkeycar.parts.dashboard_updater import DashboardUpdater
 from donkeycar.parts.speed_limiter import SpeedLimiter
 from donkeycar.parts.weather_applier import WeatherApplier
 from donkeycar.parts.surface_id_mapper import SurfaceIdMapper
+from donkeycar.parts.direction_estimator import DirectionEstimator
+from donkeycar.parts.model_takeover import ModelTakeover
 
 from donkeycar.parts.kinematics import NormalizeSteeringAngle, UnnormalizeSteeringAngle, TwoWheelSteeringThrottle
 from donkeycar.parts.kinematics import Unicycle, InverseUnicycle, UnicycleUnnormalizeAngularVelocity
@@ -422,6 +424,16 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
             inputs = ['cam/image_array_trans'] + inputs[1:]
 
         V.add(kl, inputs=inputs, outputs=outputs, run_condition='run_pilot')
+        # V.add(DirectionEstimator(),
+        #       inputs=['pilot/angle'],
+        #       outputs=['pilot/angle_multiplier'])
+        if cfg.MODEL_TAKEOVER and "unc" in model_type:
+            V.add(ModelTakeover(cfg.MODEL_TAKEOVER_ANGLE_UNC_THRESHOLD,
+                                cfg.MODEL_TAKEOVER_THROTTLE_UNC_THRESHOLD,
+                                cfg.MODEL_TAKEOVER_DEFAULT_THROTTLE),
+                  inputs=['pilot/angle', 'pilot/throttle', 'pilot/angle_unc', 'pilot/throttle_unc'],
+                  outputs=['pilot/angle', 'pilot/throttle'])
+
 
     #
     # stop at a stop sign
@@ -438,6 +450,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
         V.add(ThrottleFilter(), 
               inputs=['pilot/throttle'],
               outputs=['pilot/throttle'])
+
 
     #
     # to give the car a boost when starting ai mode in a race.

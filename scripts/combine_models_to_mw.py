@@ -397,18 +397,46 @@ def combine_models(model_paths, output_path, n_weathers=3, uncertainty=False, ex
         for output_name in output_names:
             dynamic_axes[output_name] = {0: "batch_size"}
         
+        # Handle potential profile.py naming conflict
+        # PyTorch's ONNX export uses the profile module, which conflicts with profile.py in scripts/
+        original_modules = {}
+        profile_conflict_modules = ['profile', '_pyprofile', 'cProfile', 'pstats']
+        
+        for mod_name in profile_conflict_modules:
+            if mod_name in sys.modules:
+                original_modules[mod_name] = sys.modules[mod_name]
+                del sys.modules[mod_name]
+        
+        # Temporarily remove script directories containing profile.py from sys.path
+        script_dirs_to_remove = []
+        original_sys_path = sys.path.copy()
+        
+        for path_entry in sys.path[:]:
+            if os.path.exists(os.path.join(path_entry, 'profile.py')):
+                if 'lib/python' not in path_entry or 'site-packages' in path_entry or 'dist-packages' in path_entry:
+                    script_dirs_to_remove.append(path_entry)
+                    sys.path.remove(path_entry)
+        
         try:
-            torch.onnx.export(
-                onnx_model,
-                (dummy_image, dummy_surface_id),
-                onnx_path,
-                opset_version=13,
-                input_names=["image", "surface_id"],
-                output_names=output_names,
-                dynamic_axes=dynamic_axes,
-                export_params=True,
-                do_constant_folding=True
-            )
+            # Try newer dynamo-based export first (PyTorch 2.x+)
+            export_kwargs = {
+                "model": onnx_model,
+                "args": (dummy_image, dummy_surface_id),
+                "f": onnx_path,
+                "opset_version": 13,
+                "input_names": ["image", "surface_id"],
+                "output_names": output_names,
+                "dynamic_axes": dynamic_axes,
+                "export_params": True,
+                "do_constant_folding": True
+            }
+            
+            # Add dynamo parameter if supported (silently fall back if not)
+            try:
+                torch.onnx.export(**export_kwargs, dynamo=True)
+            except TypeError:
+                # dynamo parameter not supported, use legacy export
+                torch.onnx.export(**export_kwargs)
             
             onnx_file_size_mb = os.path.getsize(onnx_path) / (1024 * 1024)
             print(f"ONNX model saved successfully! Size: {onnx_file_size_mb:.2f} MB")
@@ -417,7 +445,20 @@ def combine_models(model_paths, output_path, n_weathers=3, uncertainty=False, ex
             print(f"  Note: surface_id should be 0 (dry), 1 (wet), or 2 (icy)")
             
         except Exception as e:
-            print(f"Warning: ONNX export failed: {e}")
+            error_msg = str(e)
+            print(f"Warning: ONNX export failed: {error_msg}")
+            
+            # Provide specific help for various compatibility issues
+            if "ml_dtypes" in error_msg and "float4_e2m1fn" in error_msg:
+                print("\nThis appears to be a ml_dtypes version compatibility issue.")
+                print("Try upgrading ml_dtypes:")
+                print("  pip install --upgrade ml_dtypes")
+                print("Or if that doesn't work, try:")
+                print("  pip install ml_dtypes>=0.4.0")
+            elif "profile" in error_msg and "run" in error_msg:
+                print("\nThis appears to be a module naming conflict with profile.py")
+                print("The script attempted to work around this but it persisted.")
+            
             print("PyTorch model was still saved successfully.")
     
     return True
