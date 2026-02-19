@@ -4,7 +4,7 @@ class DirectionEstimator(object):
     allow reverse to trigger automatic reverse throttle
     '''
 
-    def __init__(self, n=10):
+    def __init__(self, n=50):
         #create a queue with n zeros
         self.n = n
         self.angle_queue = [0.0] * n
