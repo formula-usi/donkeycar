@@ -145,7 +145,8 @@ class LocalWebController(tornado.web.Application):
         self.throttle_mode = "default"
         self.straight_throttle = 1.0
         self.steer_throttle = 1.0
-        self.basic_ctr.socket_update_fn = self.send_websocket_data
+        if self.basic_ctr is not None:
+            self.basic_ctr.socket_update_fn = self.send_websocket_data
 
         handlers = [
             (r"/", RedirectHandler, dict(url="/drive")),
