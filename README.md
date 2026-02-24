@@ -1,74 +1,141 @@
-# Donkeycar: a python self driving library
+# Stay on Track: Phäenomena Exhibition by Università della Svizzera Italiana
 
+### Credits to: Roberto Minelli & Samuele Pasini
 
-![Build Status](https://github.com/autorope/donkeycar/actions/workflows/python-package-conda.yml/badge.svg?branch=main)
-![Lint Status](https://github.com/autorope/donkeycar/actions/workflows/superlinter.yml/badge.svg?branch=main)
-![Release](https://img.shields.io/github/v/release/autorope/donkeycar)
+This is the guide starting from Zero to setup and use the Waveshare Piracer Car for the "Stay on Track" Exhibition. The target of this guide are the managers of the exhibition, a specific guide for daily usage is available in the page [Daily](docs/daily.md).
+The original donkeycar README file is available in the page [Donkeycar](docs/donkeycar.md)
 
+This guide will be structured as follows: The first part will cover the [Installation and Initialization](#installation-and-initialization), setup the [Path-ological](#path-ological) application to manage the circuits, how to perform a [Driving Session](#driving-session), a [Simulator Session](#simulator-session), [Model Training](#model-training), run the Piracer Car with [Autonomous Driving](#autonomous-driving).
 
-[![All Contributors](https://img.shields.io/github/contributors/autorope/donkeycar)](#contributors-)
-![Issues](https://img.shields.io/github/issues/autorope/donkeycar)
-![Pull Requests](https://img.shields.io/github/issues-pr/autorope/donkeycar?)
-![Forks](https://img.shields.io/github/forks/autorope/donkeycar)
-![Stars](https://img.shields.io/github/stars/autorope/donkeycar)
-![License](https://img.shields.io/github/license/autorope/donkeycar)
+## Installation and Initialization
 
-![Discord](https://img.shields.io/discord/662098530411741184.svg?logo=discord&colorB=7289DA)
+### Raspberry OS Installation
+The first step is the installation of the OS on the SD Card. Insert the SD Card in an SD Card reader, connect to you laptop and follow the steps to install the Raspberry PI OS following the steps at [this link](http://diyrobocars.com/2025/06/28/tips-for-installing-donkeycar-on-the-waveshare-piracer-pro/).
 
-Donkeycar is minimalist and modular self driving library for Python. It is
-developed for hobbyists and students with a focus on allowing fast experimentation and easy
-community contributions.
-
-#### Quick Links
-* [Donkeycar Updates & Examples](http://donkeycar.com)
-* [Build instructions and Software documentation](http://docs.donkeycar.com)
-* [Discord / Chat](https://discord.gg/PN6kFeA)
-
-![donkeycar](https://github.com/autorope/donkeydocs/blob/master/docs/assets/build_hardware/donkey2.png)
-
-#### Use Donkey if you want to:
-* Make an RC car drive its self.
-* Compete in self driving races like [DIY Robocars](http://diyrobocars.com)
-* Experiment with autopilots, mapping computer vision and neural networks.
-* Log sensor data. (images, user inputs, sensor readings)
-* Drive your car via a web or game controller or RC controller.
-* Leverage community contributed driving data.
-* Use existing CAD models for design upgrades.
-
-### Get driving.
-After building a Donkey2 you can turn on your car and go to http://localhost:8887 to drive.
-
-### Modify your cars behavior.
-The donkey car is controlled by running a sequence of events
-
-```python
-#Define a vehicle to take and record pictures 10 times per second.
-
-import time
-from donkeycar import Vehicle
-from donkeycar.parts.cv import CvCam
-from donkeycar.parts.tub_v2 import TubWriter
-V = Vehicle()
-
-IMAGE_W = 160
-IMAGE_H = 120
-IMAGE_DEPTH = 3
-
-#Add a camera part
-cam = CvCam(image_w=IMAGE_W, image_h=IMAGE_H, image_d=IMAGE_DEPTH)
-V.add(cam, outputs=['image'], threaded=True)
-
-#warmup camera
-while cam.run() is None:
-    time.sleep(1)
-
-#add tub part to record images
-tub = TubWriter(path='./dat', inputs=['image'], types=['image_array'])
-V.add(tub, inputs=['image'], outputs=['num_records'])
-
-#start the drive loop at 10 Hz
-V.start(rate_hz=10)
+Use the following credentials:
+```
+formulausi
+phaenomena2026!
 ```
 
-See [home page](http://donkeycar.com), [docs](http://docs.donkeycar.com)
-or join the [Discord server](http://www.donkeycar.com/community.html) to learn more.
+### Enable SSH
+- Enable `SSH` in `Services`
+    - Use **Password Authentication**, otherwise you can only login with RSA keys.
+    - If you forget to do so, [you can fix it](https://www.bodhost.com/kb/how-to-enable-ssh-password-authentication/) later.
+- Finish by applying OS customization settings!
+
+### Assembly
+Once the installation is completed, remove the SD card from your laptopt and insert it into the the Raspberry.
+You can now assembly the Piracer Car following the [Official Guide](https://www.waveshare.com/wiki/File:Piracer_pro_ai_kit-en2.pdf).
+
+
+### Connect to Wi-Fi
+For the first time, you should already have a Wi-Fi connection configures during installation, if you want to change it you should connect the car to the monitor and they keyboard, then login with the credentials used in the installation, and select the wifi network to use, the default one used as hotspot during tests is:
+```
+formulausi
+StoccoBoy!
+```
+
+### OLED Display initialization
+
+Use command belows to install service for OLED display that displays IP address, battery status, etc.
+```
+git clone https://github.com/formula-usi/waveshare-pi-display.git
+cd waveshare-pi-display
+sudo ./install.sh
+```
+
+On the display you should see the same IP that you can get using:
+
+```
+ifconfig
+```
+After the installation, feel free to remove the folder `waveshare-pi-display`.
+
+
+
+### SSH Connection from the laptop
+First you should create the SSH Key:
+
+```
+ssh-keygen
+```
+
+Then, when it is asked, save it as 
+
+```
+/root/.ssh/id_rsa_piracer
+```
+Then you should copy the key to the Piracer Car using the IP address you can see on the display
+
+```
+ssh-copy-id -i ~/.ssh/id_rsa_piracer formulausi@IP_ADDRESS
+```
+
+When asked, use the password phaenomena2026!
+
+
+Finally you can set the SSH credentials in the file ~/.ssh/config
+
+```
+Host piracer
+        HostName IP_ADDRESS
+        User formulausi
+        LocalForward 8887 127.0.0.1:8887
+        LocalForward 8886 127.0.0.1:8886
+        IdentityFile ~/.ssh/id_rsa_piracer
+```
+Be careful, the IP Address can change during the days, if you see a different IP Address on the display, remember to change the configuration.
+
+### Bluetooth Initialization
+
+In the SSH Session, TODO
+
+
+### Create a Donkey Car Application
+In the SSH Session, use this command:
+```
+donkey createcar --path ~/piracerpro
+```
+
+### Update Car Configuration
+- Navigate to the Donkey Car application created in the previous step (e.g., `cd ~/piracerpro`)
+- Replace the file `myconfig.py` with the following configurations:
+
+```
+
+```
+If, after running the car, you notice that there are calibration problems, you can follow the next section to change the obtain more precise parameters for the configuration
+
+### Calibrate the Car
+Follow [this guide](https://docs.donkeycar.com/guide/calibrate/) to calibrate steering and throttle.
+
+### Conect the Car to the NVIDIA Spark
+
+An Nvidia Spark (aka Gold) will be used to train the models, you should enstablish an SSH Connection between the car and the Gold.
+
+First you should create the SSH Key:
+
+```
+ssh-keygen
+```
+
+Then, when it is asked, save it as 
+
+```
+/root/.ssh/id_rsa_gold
+```
+Then you should copy the key to the NVIDIA Spark
+
+TODO ssh copy id
+
+Finally you can set the SSH credentials in the file ~/.ssh/config
+
+```
+Host gold 
+    HostName gold.si.usi.ch
+    User formulausi
+    Port 222
+    IdentityFile ~/.ssh/id_rsa_gold
+    LocalForward 11000 127.0.0.1:11000
+```
