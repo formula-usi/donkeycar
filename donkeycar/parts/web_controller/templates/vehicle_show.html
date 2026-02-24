@@ -1,53 +1,19 @@
 {% extends "base_show.html" %}
 {% block content %}
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <style>
-    /* Custom styling for AI throttle range slider */
-    .ai-throttle-range {
-      -webkit-appearance: none;
-      appearance: none;
-      height: 8px;
-      border-radius: 5px;
-      background: #ddd;
-      outline: none;
-      opacity: 0.7;
-      transition: opacity 0.2s;
-    }
-    
-    .ai-throttle-range:hover {
-      opacity: 1;
-    }
-    
-    .ai-throttle-range::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 15px;
-      height: 15px;
-      border-radius: 50%;
-      background: #990000;
-      cursor: pointer;
-    }
-    
-    .ai-throttle-range::-moz-range-thumb {
-      width: 15px;
-      height: 15px;
-      border-radius: 50%;
-      background: #990000;
-      cursor: pointer;
-      border: none;
-    }
-    
-    /* Firefox specific styling for filled portion */
-    .ai-throttle-range::-moz-range-progress {
-      background: #cc3333;
-      height: 8px;
-      border-radius: 5px;
-    }
-  </style>
-  <div class="container">
-    <div class="row">
 
-      <div class="col-md-6">
+  <div class="video_container" style="position: absolute; width: 100vw; height: 100vh;">
+           <!-- video -->
+        <div class="thumbnail" style="height: 100%;">
+          <img id='mpeg-image', class='img-responsive' src="/video"style="height: 100%;" />
+        </div>
+  </div> 
+  <div class="screen">
+  <div class="grid-bg" aria-hidden="true"></div>
+  </div>
+    <div class="content">
+      
+      <div class="">
         <!-- pilot mode/recording -->
         <!--
         <form>
@@ -80,6 +46,7 @@
         </div>
         -->
 
+
         <!-- programmable buttons -->
         <form id="button_bar" style="display: none;">
           <button type="button" id="w1" class="btn btn-info">1</button>
@@ -89,17 +56,12 @@
           <button type="button" id="w5" class="btn btn-info">5</button>
         </form>
 
-        <!-- video -->
-        <div class="thumbnail">
-          <img id='mpeg-image', class='img-responsive' src="/video"/> </img>
-        </div>
-
         <!-- steering/throttle meters -->
         <div id="control-bars">
           <!-- Show Speedometer -->
           <analog-gauge  id="speedometer_gauge" class="speedometer_gauge" value="100" min-label="Low" max-label="High" values="11"></analog-gauge>
           <div>
-            <img id="steering_wheel" src="/static/steering_wheel.png" height="150px" style="vertical-align: middle; margin-right: 5px;">
+            <img id="steering_wheel" src="/static/images/steering_wheel.png">
           </div>
           <!-- 
           <div class="speedometer">
@@ -112,19 +74,25 @@
         
       </div> <!-- end video column -->
 
-      <div id="joystick-column"  class="col-md-6">
-        <!-- circuit display -->
-        <div style="margin-top: 10px;">
-            <label>Circuit: </label>
-            <span id="circuit_display" style="font-weight: bold; color: #337ab7;">Default</span>
+      <div id="joystick-column"  class="">
+        <!-- weather display -->
+        <div class="info_container weather">
+      Weather:
+      <span id="weather_display" style="color: #2fd6ee;">Dry</span>
+        </div>
+        <div class="info_container circuit">
+            Circuit:
+            <span id="circuit_display" style="color: #2fd6ee;">Default</span>
         </div>
         
         <!-- circuit image display -->
-        <div style="margin-top: 10px;">
-            <div style="margin-top: 5px; border: 2px solid #337ab7; border-radius: 5px; padding: 5px; display: inline-block; background-color: #f8f9fa;">
+        <div style="">
+            <div style="">
                 <img id="circuit_image" src="/static/images/default_circuit.png" 
                      alt="Circuit Minimap" 
-                     style="max-width: 150px; max-height: 100px; width: auto; height: auto; display: block;">
+                     style="width: 8vw; height: auto; display: block; position: absolute;
+    right: 3vw;
+    top: 4vh;">
             </div>
         </div>
 
@@ -205,7 +173,6 @@
         </div>
       </div> <!-- end joystick-column -->
       <div id="joystick-padding"></div>
-    </div> <!-- END row -->
   </div> <!-- END page Container -->
 
   <!--
@@ -219,6 +186,21 @@
     </div>
   </footer>
   -->
+
+  <!-- Throttle -->
+   <div class="throttlebar-wrap">
+  <div class="throttlebar">
+    <span class="seg s1"></span>
+    <span class="seg s2"></span>
+    <span class="seg s3"></span>
+    <span class="seg s4"></span>
+    <span class="seg s5"></span>
+    <span class="seg s6"></span>
+    <span class="seg s7"></span>
+    <span class="seg s8"></span>
+    <span class="seg s9"></span>
+  </div>
+</div>
 
   <!-- Modal -->
   <div class="modal fade" id="aboutControlModes" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
@@ -340,5 +322,47 @@
     }
   });
 </script>
-
+<style>
+    /* Custom styling for AI throttle range slider */
+    .ai-throttle-range {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      border-radius: 5px;
+      background: #ddd;
+      outline: none;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    
+    .ai-throttle-range:hover {
+      opacity: 1;
+    }
+    
+    .ai-throttle-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #990000;
+      cursor: pointer;
+    }
+    
+    .ai-throttle-range::-moz-range-thumb {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #990000;
+      cursor: pointer;
+      border: none;
+    }
+    
+    /* Firefox specific styling for filled portion */
+    .ai-throttle-range::-moz-range-progress {
+      background: #cc3333;
+      height: 8px;
+      border-radius: 5px;
+    }
+  </style>
 {% end %}

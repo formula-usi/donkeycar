@@ -29,26 +29,16 @@
 
 
 <body>
-<nav class="navbar navbar-default">
-  <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-    
-    <!-- LEFT: Logos -->
-    <div class="navbar-left" style="display: flex; gap: 5px; padding-left: 20px;">
-      <img src="/static/si_logo.webp" height="80">
-      <img src="/static/formula_usi.png" height="80">
-    </div>
+      <img src="/static/si_logo.webp" class="logo logo_si">
+      <img src="/static/formula_usi.png" class="logo logo_formula_usi">
+      <img src="/static/formula_usi.png" class="logo logo_formula_usi">
 
-    <!-- RIGHT: Weather -->
-    <div class="navbar-right" style="display: flex; align-items: center; gap: 5px; padding-right: 50px;">
-      <span id="surface_display">
+      <!-- <span id="surface_display">
         <img id="surface_image" src="/static/weather/dry.png" 
              alt="Circuit Minimap" 
              height="80"> 
-      </span>
-    </div>
-
-  </div>
-</nav>
+      </span> -->
+  
 
 	{% block content %}{% end %}
 </body>
