@@ -91,6 +91,17 @@ Be careful, the IP Address can change during the days, if you see a different IP
 
 In the SSH Session, TODO
 
+### Donkeycar installation
+
+Clone this repository, checkout to phaenomena branch and run the installation script:
+
+```
+git clone https://github.com/formula-usi/donkeycar.git
+cd donkeycar
+git checkout phaenomena
+./setup_uv.sh
+```
+
 
 ### Create a Donkey Car Application
 In the SSH Session, use this command:
