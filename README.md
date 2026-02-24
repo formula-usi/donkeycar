@@ -89,7 +89,55 @@ Be careful, the IP Address can change during the days, if you see a different IP
 
 ### Bluetooth Initialization
 
-In the SSH Session, TODO
+In the SSH Session, **Start Bluetooth Manager**
+```
+$ sudo bluetoothctl
+Agent registered
+```
+
+**Turn on the agent**
+```
+[bluetooth]# agent on
+Agent is already registered
+```
+
+**Request default agent**
+```
+[bluetooth]# default-agent
+Default agent request successful
+```
+
+**Start scanning...**
+```[bluetooth]# scan on
+Discovery started
+```
+
+**Put the PS controller in pairing mode (PS+share) and look for it**
+```
+...
+[NEW] Device 84:30:95:0B:46:F6 Wireless Controller
+```
+
+**Pair the wireless controller**
+```
+[bluetooth]# pair 84:30:95:0B:46:F6 
+Attempting to pair with 84:30:95:0B:46:F6
+Pairing successful
+```
+
+**Trust the controller**
+```
+[Wireless Controller]# trust 84:30:95:0B:46:F6 
+[CHG] Device 84:30:95:0B:46:F6 Trusted: yes
+Changing 84:30:95:0B:46:F6 trust succeeded
+```
+
+**Connect the controller**
+```
+[Wireless Controller]# connect 84:30:95:0B:46:F6 
+Attempting to connect to 84:30:95:0B:46:F6
+Connection successful
+```
 
 ### Donkeycar installation
 
