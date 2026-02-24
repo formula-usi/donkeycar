@@ -143,6 +143,10 @@ setup_uv_environment() {
 
         exit 0
     fi
+    if [[ "$platform" == "pi" ]]; then
+        sudo apt-get install build-essential python3 python3-dev python3-pip python3-virtualenv python3-numpy python3-picamera python3-pandas python3-rpi.gpio i2c-tools avahi-utils joystick libopenjp2-7-dev libtiff5-dev gfortran libatlas-base-dev libopenblas-dev libhdf5-serial-dev libgeos-dev git ntp
+        sudo apt-get install libilmbase-dev libopenexr-dev libgstreamer1.0-dev libjasper-dev libwebp-dev libatlas-base-dev libavcodec-dev libavformat-dev libswscale-dev
+    fi
 
     print_info "Setting up UV environment for platform: $platform"
 
