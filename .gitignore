@@ -33,6 +33,5 @@ uv.lock
 mysim/data/*
 macchinina/data/*
 macchinina/models/*
-macchinina/*
-docs
 DonkeySimMac/*
+macchinina/*
