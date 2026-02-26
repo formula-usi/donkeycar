@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Formula USI </title>
+  <link rel="icon" type="image/x-icon" href="/static/images/cockpit/formula_usi.png">
+  <script type="text/javascript" src="/static/js/cockpit.js"></script>
+  <link href="/static/styles/cockpit.css" rel="stylesheet">
+</head>
+
+<body>
+  <!-- Video feed is fullscreen non-blocking in the background -->
+  <div class="video_container" style="position: absolute; width: 100vw; height: 100vh;">
+        <div class="thumbnail" style="height: 100%;">
+          <img id='mpeg-image', class='img-responsive' src="/video"style="height: 100%;" />
+        </div>
+  </div> 
+
+
+  <div class="screen">
+      <div class="logos">
+      <img alt="SI Logo" src="/static/images/cockpit/si_logo.webp" class="logo logo_si">
+      <img alt="Formula USI Logo" src="/static/images/cockpit/formula_usi.png" class="logo logo_formula_usi">
+      <img alt="Formula USI Logo" src="/static/images/cockpit/formula_usi.png" class="logo logo_formula_usi">
+  </div>
+  <div class="grid-bg" aria-hidden="true"></div>
+  </div>
+    <div class="content">
+      <div class="">
+        <!-- steering/throttle meters -->
+        <div id="control-bars">
+          <!-- Show Speedometer -->
+          <analog-gauge  id="speedometer_gauge" class="speedometer_gauge" value="100" min-label="Low" max-label="High" values="11"></analog-gauge>
+          <div>
+            <img id="steering_wheel" src="/static/images/cockpit/steering_wheel.png">
+          </div>
+          
+          <div class="speedometer">
+            <div class="needle" id="speedometer_needle" style="--score:100">
+              <span class="score" id="speedometer_score">100</span>
+            </div>
+          </div>
+       
+        </div>
+        
+      </div> <!-- end video column -->
+
+      <div id="joystick-column"  class="">
+        <!-- weather display -->
+        <div class="info_container weather">
+      Weather:
+      <span id="weather_display" style="color: #2fd6ee;">Dry</span>
+        </div>
+        <div class="info_container circuit">
+            Circuit:
+            <span id="circuit_display" style="color: #2fd6ee;">Default</span>
+        </div>
+        
+        <!-- circuit image display -->
+        <div style="">
+            <div style="">
+                <img id="circuit_image" src="/static/images/default_circuit.png" 
+                     alt="Circuit Minimap" 
+                     style="width: 8vw; height: auto; display: block; position: absolute;
+    right: 3vw;
+    top: 4vh;">
+            </div>
+        </div>
+        </div>
+      </div> <!-- end joystick-column -->
+  </div> 
+
+  <!-- Throttle -->
+   <div class="throttlebar-wrap">
+  <div class="throttlebar">
+    <span class="seg s1"></span>
+    <span class="seg s2"></span>
+    <span class="seg s3"></span>
+    <span class="seg s4"></span>
+    <span class="seg s5"></span>
+    <span class="seg s6"></span>
+    <span class="seg s7"></span>
+    <span class="seg s8"></span>
+    <span class="seg s9"></span>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,3 +1,65 @@
+ // Initialize state with server-side values
+  window.serverState = {
+    circuit: "{{ current_circuit if current_circuit else 'Default' }}",
+    surface: "{{ current_surface if current_surface else 'Dry' }}",
+    surface_icon: "{{ current_surface_icon if current_surface_icon else '/static/images/weather/dry.png'}}",
+    circuit_icon: "{{ current_circuit_icon if current_circuit_icon else 'Dry' }}"
+  };
+ 
+  
+  function updateAiThrottleSlider(slider) {
+    // Update the display value
+    document.getElementById('ai_throttle_value').textContent = (slider.value / 100).toFixed(2);
+    
+    // Calculate the percentage for the gradient
+    const percentage = (slider.value - slider.min) / (slider.max - slider.min) * 100;
+    
+    // Update the background gradient (WebKit browsers)
+    slider.style.background = `linear-gradient(to right, #cc3333 0%, #cc3333 ${percentage}%, #ddd ${percentage}%, #ddd 100%)`;
+  }
+  
+  function updateThrottleControlsVisibility() {
+    const modeSelect = document.getElementById('mode_select');
+    const maxThrottleContainer = document.getElementById('max_throttle_container');
+    const aiThrottleContainer = document.getElementById('ai_throttle_container');
+    
+    if (modeSelect && maxThrottleContainer && aiThrottleContainer) {
+      const currentMode = modeSelect.value;
+      
+      // Max throttle visible for 'user' and 'local_angle' modes
+      if (currentMode === 'user' || currentMode === 'local_angle') {
+        maxThrottleContainer.style.display = 'inline-block';
+      } else {
+        maxThrottleContainer.style.display = 'none';
+      }
+      
+      // AI throttle multiplier visible only for 'local' mode (Full Auto)
+      if (currentMode === 'local') {
+        aiThrottleContainer.style.display = 'inline-block';
+      } else {
+        aiThrottleContainer.style.display = 'none';
+      }
+    }
+  }
+  
+document.addEventListener("DOMContentLoaded", function() {
+    console.log( "document ready!" );
+    driveHandler.load();
+    
+    // Initialize the AI throttle slider background
+    const aiSlider = document.getElementById('ai_throttle_range');
+    if (aiSlider) {
+      updateAiThrottleSlider(aiSlider);
+    }
+    
+    // Set up mode change listener for throttle controls visibility
+    const modeSelect = document.getElementById('mode_select');
+    if (modeSelect) {
+      modeSelect.addEventListener('change', updateThrottleControlsVisibility);
+      updateThrottleControlsVisibility(); // Initial visibility setup
+    }
+  });
+
 var driveHandler = new function() {
     //functions used to drive the vehicle. 
 
