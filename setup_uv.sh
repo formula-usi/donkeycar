@@ -136,10 +136,10 @@ setup_uv_environment() {
         print_info "Setting up NVIDIA NCG container for DGC Spark"
         docker build --build-arg USERNAME=$USER --build-arg USER_UID=$(id -u) --build-arg USER_GID=$(id -g) -t phaenomena:1.0 . 
         docker rm phaenomena
-        # docker run --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -it --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/macchinina,target=/home/formulausi/macchinina --name phaenomena phaenomena:1.0 /bin/bash
+        docker run --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -it --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/macchinina,target=/home/formulausi/macchinina --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/scripts,target=/home/formulausi/scripts --name phaenomena phaenomena:1.0 /bin/bash
 
         #temp
-        docker run --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -it --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/macchinina,target=/home/formulausi/macchinina --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/donkeycar/parts,target=/home/formulausi/donkeycar/parts  --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/donkeycar/pipeline,target=/home/formulausi/donkeycar/pipeline --name phaenomena phaenomena:1.0 /bin/bash
+        # docker run --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -it --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/macchinina,target=/home/formulausi/macchinina --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/donkeycar/parts,target=/home/formulausi/donkeycar/parts  --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/donkeycar/pipeline,target=/home/formulausi/donkeycar/pipeline --name phaenomena phaenomena:1.0 /bin/bash
 
         exit 0
     fi

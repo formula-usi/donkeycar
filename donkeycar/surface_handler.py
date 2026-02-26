@@ -44,10 +44,10 @@ def compute_steering_angle(steering_angle, throttle, old_steering_angle, surface
 def apply_wet_conditions(throttle, old_throttle):
     """Simulate wet road conditions - reduced traction and wheel spin"""
     # Reduced acceleration on wet surfaces
-    max_throttle_change = 0.85
-    noise = 0.6
-    throttle_inversion_probability = 0
-    max_throttle_inversion = 0
+    max_throttle_change = 0.9
+    noise = 0.7
+    throttle_inversion_probability = 0.05
+    max_throttle_inversion = 0.6
     return apply_throttle_conditions(throttle, old_throttle, max_throttle_change, noise, throttle_inversion_probability, max_throttle_inversion)
 
 def apply_icy_conditions(throttle, old_throttle):

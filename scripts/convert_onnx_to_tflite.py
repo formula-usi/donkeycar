@@ -6,7 +6,8 @@ This script converts a donkeycar LinearMW ONNX model to TFLite format.
 Run this on an x86_64 machine if you have TensorFlow compatibility issues on ARM.
 
 Requirements:
-    pip install tensorflow onnx onnx-tf tensorflow_addons numpy pillow
+    pip install tensorflow numpy pillow
+    pip install onnx==1.10.2 onnx-tf==1.10.0
 
 Usage:
     # Basic conversion (without INT8 quantization)
@@ -142,9 +143,9 @@ def convert_onnx_to_tflite(onnx_path, tflite_path, representative_images=None):
     
     try:
         import onnx
-        from onnx_tf.backend import prepare
+        import onnx2tf
     except ImportError:
-        raise ImportError("onnx and onnx-tf are required. Install with: pip install onnx onnx-tf")
+        raise ImportError("onnx and onnx2tf are required. Install with: pip install onnx onnx2tf")
     
     print(f"\nConverting ONNX to TFLite: {onnx_path} -> {tflite_path}")
     
@@ -152,16 +153,20 @@ def convert_onnx_to_tflite(onnx_path, tflite_path, representative_images=None):
     print("  Step 1: Loading ONNX model...")
     onnx_model = onnx.load(onnx_path)
     
-    # Step 2: Convert ONNX to TensorFlow
-    print("  Step 2: Converting ONNX to TensorFlow...")
-    tf_rep = prepare(onnx_model)
-    
-    # Save as TensorFlow SavedModel
+    # Step 2: Convert ONNX to TensorFlow SavedModel
     tf_model_path = onnx_path.replace('.onnx', '_tf_model')
-    print(f"  Step 3: Saving TensorFlow SavedModel to {tf_model_path}...")
-    tf_rep.export_graph(tf_model_path)
+    print(f"  Step 2: Converting ONNX to TensorFlow SavedModel...")
+    print(f"          Output: {tf_model_path}")
     
-    # Step 4: Create representative dataset generator (if provided)
+    # Use onnx2tf for conversion
+    onnx2tf.convert(
+        input_onnx_file_path=onnx_path,
+        output_folder_path=tf_model_path,
+        output_signaturedefs=True,
+        non_verbose=True
+    )
+    
+    # Step 3: Create representative dataset generator (if provided)
     if representative_images is not None:
         def representative_data_gen():
             """Generator for representative dataset."""
