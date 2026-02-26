@@ -32,7 +32,7 @@ import donkeycar as dk
 from donkeycar.parts.transform import TriggeredCallback, DelayedTrigger
 from donkeycar.parts.tub_v2 import TubWriter
 from donkeycar.parts.datastore import TubHandler
-from donkeycar.parts.controller import LocalWebController, WebFpv, JoystickController
+from donkeycar.parts.controller import LocalWebController, JoystickController
 from donkeycar.parts.throttle_filter import ThrottleFilter
 from donkeycar.parts.behavior import BehaviorPart
 from donkeycar.parts.file_watcher import FileWatcher

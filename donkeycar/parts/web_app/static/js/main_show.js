@@ -358,7 +358,7 @@ var driveHandler = new function() {
       // Update surface display with icon
       var surfaceElement = $('#surface_display');
       // Determine which image to show
-      var imageSrc = '/static/weather/dry.png'; // default
+      var imageSrc = '/static/images/weather/dry.png'; // default
 
       // Set color based on surface type
       var surfaceColor = '#337ab7'; // default blue
@@ -372,11 +372,11 @@ var driveHandler = new function() {
       surfaceElement.css('color', surfaceColor);
 
       if (state.surface.toLowerCase() === 'dry') {
-        imageSrc = '/static/weather/dry.png';
+        imageSrc = '/static/images/weather/dry.png';
       } else if (state.surface.toLowerCase() === 'wet') {
-        imageSrc = '/static/weather/wet.png';
+        imageSrc = '/static/images/weather/wet.png';
       } else if (state.surface.toLowerCase() === 'icy') {
-        imageSrc = '/static/weather/icy.png';
+        imageSrc = '/static/images/weather/icy.png';
       }
       //surfaceElement.html(`<img src="${imageSrc}" alt="${state.surface}" title="${state.surface}" height="80">`);
       var surfaceText = state.surface.toUpperCase(); // DRY / WET / ICY

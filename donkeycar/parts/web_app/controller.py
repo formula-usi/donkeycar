@@ -3,7 +3,7 @@
 """
 Created on Sat Jun 24 20:10:44 2017
 @author: wroscoe
-remotes.py
+controller.py
 The client and web server needed to control a car remotely.
 """
 
@@ -17,9 +17,8 @@ import asyncio
 
 import requests
 from tornado.ioloop import IOLoop
-from tornado.web import Application, RedirectHandler, StaticFileHandler, \
-    RequestHandler
-from tornado.httpserver import HTTPServer
+from tornado.web import (
+    RedirectHandler, StaticFileHandler, RequestHandler)
 import tornado.gen
 import tornado.websocket
 from socket import gethostname
@@ -32,11 +31,9 @@ logging.getLogger('tornado.access').propagate = False
 class RemoteWebServer():
     '''
     A controller that repeatedly polls a remote webserver and expects
-    the response to be angle, throttle and drive mode.
+    the response to be angle, throttle, drive mode, and recording mode.
     '''
-
-    def __init__(self, remote_url, connection_timeout=.25):
-
+    def __init__(self, remote_url):
         self.control_url = remote_url
         self.time = 0.
         self.angle = 0.
@@ -44,15 +41,13 @@ class RemoteWebServer():
         self.mode = 'user'
         self.mode_latch = None
         self.recording = False
-        # use one session for all requests
-        self.session = requests.Session()
+        self.session = requests.Session() # use one session for all requests
 
     def update(self):
         '''
-        Loop to run in separate thread the updates angle, throttle and
-        drive mode.
+        Loop to run in separate thread the updates angle, throttle, drive
+        and recording mode.
         '''
-
         while True:
             # get latest value from server
             self.angle, self.throttle, self.mode, self.recording = self.run()
@@ -62,7 +57,6 @@ class RemoteWebServer():
         '''
         Return the last state given from the remote server.
         '''
-
         return self.angle, self.throttle, self.mode, self.recording
 
     def run(self):
@@ -70,7 +64,6 @@ class RemoteWebServer():
         Posts current car sensor data to webserver and returns
         angle and throttle recommendations.
         '''
-
         data = {}
         response = None
         while response is None:
@@ -81,11 +74,13 @@ class RemoteWebServer():
 
             except requests.exceptions.ReadTimeout as err:
                 print("\n Request took too long. Retrying")
+                print(err)
                 # Lower throttle to prevent runaways.
-                return self.angle, self.throttle * .8, None
+                return self.angle, self.throttle * .8, self.mode, self.recording
 
             except requests.ConnectionError as err:
                 # try to reconnect every 3 seconds
+                print(err)
                 print("\n Vehicle could not connect to server. Make sure you've " +
                     "started your server and you're referencing the right port.")
                 time.sleep(3)
@@ -99,13 +94,9 @@ class RemoteWebServer():
 
         return angle, throttle, drive_mode, recording
 
-    def shutdown(self):
-        pass
-
 
 class LocalWebController(tornado.web.Application):
-
-    def __init__(self, port=8887, mode='user', cfg: Config = None, basic_ctr=None):
+    def __init__(self, port=8887, mode='user', cfg: Config | None = None, basic_ctr=None):
         """
         Create and publish variables needed on many of
         the web handlers.
@@ -113,7 +104,7 @@ class LocalWebController(tornado.web.Application):
         logger.info('Starting Donkey Server...')
 
         this_dir = os.path.dirname(os.path.realpath(__file__))
-        self.static_file_path = os.path.join(this_dir, 'templates', 'static')
+        self.static_file_path = os.path.join(this_dir, 'static')
         self.template_path = os.path.join(this_dir, 'templates')
         self.angle = 0.0
         self.throttle = 0.0
@@ -123,7 +114,6 @@ class LocalWebController(tornado.web.Application):
         self.recording_latch = None
         self.buttons = {}  # latched button values for processing
         self.basic_ctr = basic_ctr
-
 
         self.port = port
 
@@ -585,69 +575,17 @@ class VideoAPI(RequestHandler):
 
             await tornado.gen.sleep(0.005)
 
-
-class BaseHandler(RequestHandler):
-    """ Serves the FPV web page"""
-    async def get(self):
-        data = {}
-        await self.render("templates/base_fpv.html", **data)
-
-
-class WebFpv(Application):
-    """
-    Class for running an FPV web server that only shows the camera in real-time.
-    The web page contains the camera view and auto-adjusts to the web browser
-    window size. Conjecture: this picture up-scaling is performed by the
-    client OS using graphics acceleration. Hence a web browser on the PC is
-    faster than a pure python application based on open cv or similar.
-    """
-
-    def __init__(self, port=8890):
-        self.port = port
-        this_dir = os.path.dirname(os.path.realpath(__file__))
-        self.static_file_path = os.path.join(this_dir, 'templates', 'static')
-
-        """Construct and serve the tornado application."""
-        handlers = [
-            (r"/", BaseHandler),
-            (r"/video", VideoAPI),
-            (r"/static/(.*)", StaticFileHandler,
-             {"path": self.static_file_path})
-        ]
-
-        settings = {'debug': True}
-        self.img_arr = None
-        super().__init__(handlers, **settings)
-        logger.info(f"Started Web FPV server. You can now go to "
-                    f"{gethostname()}.local:{self.port} to view the car camera")
-
-    def update(self):
-        """ Start the tornado webserver. """
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        self.listen(self.port)
-        IOLoop.instance().start()
-
-    def run_threaded(self, img_arr=None):
-        self.img_arr = img_arr
-
-    def run(self, img_arr=None):
-        self.img_arr = img_arr
-
-    def shutdown(self):
-        pass
-
-
 class DashboardAPI(RequestHandler):
     """Serves the dashboard web page using vehicle_show.html"""
     
     def get(self):
         # Map surface to icon path
         surface_icons = {
-            "Dry": "/static/weather/dry.png",
-            "Wet": "/static/weather/wet.png",
-            "Icy": "/static/weather/icy.png"
+            "Dry": "/static/images/weather/dry.png",
+            "Wet": "/static/images/weather/wet.png",
+            "Icy": "/static/images/weather/icy.png"
         }
-        current_surface_icon = surface_icons.get(self.application.surface, "/static/weather/dry.png")
+        current_surface_icon = surface_icons.get(self.application.surface, "/static/images/weather/dry.png")
         angle_to_print = float(self.application.throttle) if abs(float(self.application.throttle)) > 0.05 else 0
         data = {
             "current_ai_mul": str(self.application.cfg.AI_THROTTLE_MULT if self.application.cfg is not None else 0.0),
@@ -701,11 +639,11 @@ class CircuitAPI(RequestHandler):
             changes['surface'] = self.application.surface
             # Also send the updated surface icon
             surface_icons = {
-                "Dry": "/static/weather/dry.png",
-                "Wet": "/static/weather/wet.png",
-                "Icy": "/static/weather/icy.png"
+                "Dry": "/static/images/weather/dry.png",
+                "Wet": "/static/images/weather/wet.png",
+                "Icy": "/static/images/weather/icy.png"
             }
-            changes['surface_icon'] = surface_icons.get(self.application.surface, "/static/weather/dry.png")
+            changes['surface_icon'] = surface_icons.get(self.application.surface, "/static/images/weather/dry.png")
         if data.get('circuit_icon') is not None:
             self.application.circuit_icon = data['circuit_icon']
             changes['circuit_icon'] = self.application.circuit_icon

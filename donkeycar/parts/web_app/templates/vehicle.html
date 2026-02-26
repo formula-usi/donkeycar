@@ -1,6 +1,49 @@
-{% extends "base.html" %}
+{% extends "base/layout.html" %}
 {% block content %}
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <style>
+    /* Custom styling for AI throttle range slider */
+    .ai-throttle-range {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      border-radius: 5px;
+      background: #ddd;
+      outline: none;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    
+    .ai-throttle-range:hover {
+      opacity: 1;
+    }
+    
+    .ai-throttle-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #990000;
+      cursor: pointer;
+    }
+    
+    .ai-throttle-range::-moz-range-thumb {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #990000;
+      cursor: pointer;
+      border: none;
+    }
+    
+    /* Firefox specific styling for filled portion */
+    .ai-throttle-range::-moz-range-progress {
+      background: #cc3333;
+      height: 8px;
+      border-radius: 5px;
+    }
+  </style>
   <div class="container">
     <div class="row">
 
@@ -18,8 +61,30 @@
             </button>
         </form>
 
+        <!-- circuit display -->
+        <div style="margin-top: 10px;">
+            <label>Circuit: </label>
+            <span id="circuit_display" style="font-weight: bold; color: #337ab7;">Default</span>
+        </div>
+
+        <!-- surface display -->
+        <div style="margin-top: 5px;">
+            <label>Weather: </label>
+            <span id="surface_display" style="font-weight: bold; color: #337ab7;">Dry</span>
+        </div>
+
+        <!-- circuit image display -->
+        <div style="margin-top: 10px;">
+            <label>Minimap</label><br/>
+            <div style="margin-top: 5px; border: 2px solid #337ab7; border-radius: 5px; padding: 5px; display: inline-block; background-color: #f8f9fa;">
+                <img id="circuit_image" src="/static/images/default_circuit.png" 
+                     alt="Circuit Minimap" 
+                     style="max-width: 150px; max-height: 100px; width: auto; height: auto; display: block;">
+            </div>
+        </div>
+
         <!-- programmable buttons -->
-        <form id="button_bar">
+        <form id="button_bar" style="display: none;">
           <button type="button" id="w1" class="btn btn-info">1</button>
           <button type="button" id="w2" class="btn btn-info">2</button>
           <button type="button" id="w3" class="btn btn-info">3</button>
@@ -97,12 +162,46 @@
             <select id="throttle_mode_select" class="form-control" style="display: inline">
               <option value="user" selected>Maximum</option>
               <option value="constant">Constant</option>
+              <option value="steer_limited">Steer Limited</option>
             </select>
-            <select id="max_throttle_select" class="form-control" style="display: inline">
-              {% for t in [100, 95, 90, 85, 80, 75, 70, 60, 50, 40, 30, 20, 10] %}
-                <option value="{{ t / 100.0 }}">{{ t }}%</option>
-              {% end %}
-            </select>
+            <br>
+            <div id="max_throttle_container" style="display: inline-block; width: 200px; margin-left: 10px; vertical-align: middle;">
+              <label for="max_throttle_range" style="display: block; font-size: 12px; margin-bottom: 2px;">Max Throttle: <span id="max_throttle_value">100%</span></label>
+              <input type="range" id="max_throttle_range" class="form-control-range" 
+                     min="10" max="100" value="100" step="1" 
+                     style="width: 100%;" 
+                     oninput="document.getElementById('max_throttle_value').textContent = this.value + '%'">
+            </div>
+            
+            <!-- Steer Limited Mode Controls -->
+            <div id="steer_limited_controls" style="display: none; margin-left: 10px; vertical-align: middle;">
+              <div style="display: inline-block; width: 200px; margin-right: 10px;">
+                <label for="straight_throttle_range" style="display: block; font-size: 12px; margin-bottom: 2px; color: green;">
+                  Straight Throttle: <span id="straight_throttle_value">100%</span>
+                </label>
+                <input type="range" id="straight_throttle_range" class="form-control-range" 
+                       min="10" max="100" value="100" step="1" 
+                       style="width: 100%; accent-color: green;"
+                       oninput="document.getElementById('straight_throttle_value').textContent = this.value + '%'">
+              </div>
+              <div style="display: inline-block; width: 200px;">
+                <label for="steer_throttle_range" style="display: block; font-size: 12px; margin-bottom: 2px; color: purple;">
+                  Full Steer Throttle: <span id="steer_throttle_value">50%</span>
+                </label>
+                <input type="range" id="steer_throttle_range" class="form-control-range" 
+                       min="10" max="100" value="50" step="1" 
+                       style="width: 100%; accent-color: purple;"
+                       oninput="document.getElementById('steer_throttle_value').textContent = this.value + '%'">
+              </div>
+            </div>
+            
+            <div id="ai_throttle_container" style="display: inline-block; width: 200px; margin-left: 10px; vertical-align: middle;">
+              <label for="ai_throttle_range" style="display: block; font-size: 12px; margin-bottom: 2px;">AI Throttle Multiplier: <span id="ai_throttle_value">0.0</span></label>
+              <input type="range" id="ai_throttle_range" class="form-control-range ai-throttle-range" 
+                     min="0" max="200" value="0" step="5" 
+                     style="width: 100%;" 
+                     oninput="updateAiThrottleSlider(this)">
+            </div>
           </div>
         </div>
       </div> <!-- end joystick-column -->
@@ -165,9 +264,66 @@
   </div>
 
 <script type="text/javascript">
+  // Initialize state with server-side values
+  window.serverState = {
+    circuit: "{{ current_circuit if current_circuit else 'Default' }}",
+    surface: "{{ current_surface if current_surface else 'Dry' }}",
+    circuit_icon: "{{ current_circuit_icon if current_surface else 'Dry' }}"
+  };
+</script>
+
+<script type="text/javascript">
+  function updateAiThrottleSlider(slider) {
+    // Update the display value
+    document.getElementById('ai_throttle_value').textContent = (slider.value / 100).toFixed(2);
+    
+    // Calculate the percentage for the gradient
+    const percentage = (slider.value - slider.min) / (slider.max - slider.min) * 100;
+    
+    // Update the background gradient (WebKit browsers)
+    slider.style.background = `linear-gradient(to right, #cc3333 0%, #cc3333 ${percentage}%, #ddd ${percentage}%, #ddd 100%)`;
+  }
+  
+  function updateThrottleControlsVisibility() {
+    const modeSelect = document.getElementById('mode_select');
+    const maxThrottleContainer = document.getElementById('max_throttle_container');
+    const aiThrottleContainer = document.getElementById('ai_throttle_container');
+    
+    if (modeSelect && maxThrottleContainer && aiThrottleContainer) {
+      const currentMode = modeSelect.value;
+      
+      // Max throttle visible for 'user' and 'local_angle' modes
+      if (currentMode === 'user' || currentMode === 'local_angle') {
+        maxThrottleContainer.style.display = 'inline-block';
+      } else {
+        maxThrottleContainer.style.display = 'none';
+      }
+      
+      // AI throttle multiplier visible only for 'local' mode (Full Auto)
+      if (currentMode === 'local') {
+        aiThrottleContainer.style.display = 'inline-block';
+      } else {
+        aiThrottleContainer.style.display = 'none';
+      }
+    }
+  }
+  
   $( document ).ready(function() {
     console.log( "document ready!" );
-    driveHandler.load()
+    driveHandler.load();
+    
+    // Initialize the AI throttle slider background
+    const aiSlider = document.getElementById('ai_throttle_range');
+    if (aiSlider) {
+      updateAiThrottleSlider(aiSlider);
+    }
+    
+    // Set up mode change listener for throttle controls visibility
+    const modeSelect = document.getElementById('mode_select');
+    if (modeSelect) {
+      modeSelect.addEventListener('change', updateThrottleControlsVisibility);
+      updateThrottleControlsVisibility(); // Initial visibility setup
+    }
   });
 </script>
 

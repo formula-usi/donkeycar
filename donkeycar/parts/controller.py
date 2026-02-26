@@ -10,8 +10,7 @@ from donkeycar.surface_handler import compute_throttle, compute_steering_angle
 from prettytable import PrettyTable
 
 #import for syntactical ease
-from donkeycar.parts.web_controller.web import LocalWebController
-from donkeycar.parts.web_controller.web import WebFpv
+from donkeycar.parts.web_app.controller import LocalWebController
 
 logger = logging.getLogger(__name__)
 

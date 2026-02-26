@@ -30,7 +30,7 @@ import donkeycar as dk
 from donkeycar.parts.transform import TriggeredCallback, DelayedTrigger
 from donkeycar.parts.tub_v2 import TubWriter
 from donkeycar.parts.datastore import TubHandler
-from donkeycar.parts.controller import LocalWebController, WebFpv, JoystickController
+from donkeycar.parts.controller import LocalWebController, JoystickController
 from donkeycar.parts.throttle_filter import ThrottleFilter
 from donkeycar.parts.behavior import BehaviorPart
 from donkeycar.parts.file_watcher import FileWatcher
@@ -272,11 +272,6 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
 
     #IMU
     add_imu(V, cfg)
-
-
-    # Use the FPV preview, which will show the cropped image output, or the full frame.
-    if cfg.USE_FPV:
-        V.add(WebFpv(), inputs=['cam/image_array'], threaded=True)
 
     def load_model(kl, model_path):
         start = time.time()

@@ -9,16 +9,11 @@ Usage:
 Options:
     -h --help          Show this screen.
 """
-import os
-import time
-
 from docopt import docopt
 
 import donkeycar as dk
 
-#import parts
-from donkeycar.parts.controller import LocalWebController, \
-    JoystickController, WebFpv
+from donkeycar.parts.controller import LocalWebController
 from donkeycar.parts.throttle_filter import ThrottleFilter
 from donkeycar.parts import pins
 from donkeycar.utils import *

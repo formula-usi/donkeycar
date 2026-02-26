@@ -25,7 +25,7 @@ import donkeycar as dk
 from donkeycar.parts.transform import TriggeredCallback, DelayedTrigger
 from donkeycar.parts.tub_v2 import TubWriter
 from donkeycar.parts.datastore import TubHandler
-from donkeycar.parts.controller import LocalWebController, JoystickController, WebFpv
+from donkeycar.parts.controller import LocalWebController, JoystickController
 from donkeycar.parts.throttle_filter import ThrottleFilter
 from donkeycar.parts.behavior import BehaviorPart
 from donkeycar.parts.file_watcher import FileWatcher
@@ -220,10 +220,6 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type
             rec_tracker_part.last_num_rec_print = 0
             rec_tracker_part.force_alert = 1
         ctr.set_button_down_trigger('circle', show_record_acount_status)
-
-    # Use the FPV preview, which will show the cropped image output, or the full frame.
-    if cfg.USE_FPV:
-        V.add(WebFpv(), inputs=['cam/image_array'], threaded=True)
 
     #Behavioral state
     if cfg.TRAIN_BEHAVIORS:
