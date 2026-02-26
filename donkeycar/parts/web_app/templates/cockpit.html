@@ -5,50 +5,63 @@
   <title>Formula USI </title>
   <link rel="icon" type="image/x-icon" href="/static/images/cockpit/formula_usi.png">
   <script type="text/javascript" src="/static/js/cockpit.js"></script>
+  <script
+    src="/static/js/jquery-3.1.1.min.js"
+    integrity=""
+    crossorigin="anonymous"></script>
+  <script
+    src="/static/js/jquery-ui.min.js"
+    integrity=""
+    crossorigin="anonymous"></script>
   <link href="/static/styles/cockpit.css" rel="stylesheet">
 </head>
 
   <body>
     <div class="content">
+      <div class="topbar">
+
         <div class="logos">
-          <img alt="SI Logo" src="/static/images/cockpit/si_logo.webp" class="logo logo_si">
-          <img alt="Formula USI Logo" src="/static/images/cockpit/formula_usi.png" class="logo logo_formula_usi">
+          <!-- <img alt="SI Logo" src="/static/images/cockpit/si_logo.webp" class="logo logo_si"> -->
           <img alt="Formula USI Logo" src="/static/images/cockpit/formula_usi.png" class="logo logo_formula_usi">
         </div>
+
+        <div class="digital">
+          {{ _("circuit") }}:
+          <span id="circuit_display">Default</span>
+        </div>
+        
+        <!-- absolute positioned to not take up space -->
+        <img id="circuit_image" src="/static/images/default_circuit.png" alt="Circuit Minimap">
+      </div>
+
 
         <analog-gauge  id="speedometer_gauge" class="speedometer_gauge" value="100" min-label="Low" max-label="High" values="11"></analog-gauge>
         
-        <img alt="Steering Wheel" id="steering_wheel" src="/static/images/cockpit/steering_wheel.png">
-                
-        <div class="info_container weather">
-          Weather:
-          <span id="weather_display" style="color: #2fd6ee;">Dry</span>
-        </div>
-        <div class="info_container circuit">
-          Circuit:
-          <span id="circuit_display" style="color: #2fd6ee;">Default</span>
-        </div>
-          
-        <img id="circuit_image" src="/static/images/default_circuit.png" 
-              alt="Circuit Minimap" 
-              style="width: 8vw; height: auto; display: block; position: absolute;
-  right: 3vw;
-  top: 4vh;">
-
-    <div class="throttlebar-wrap">
-      <div class="throttlebar">
-        <span class="seg s1"></span>
-        <span class="seg s2"></span>
-        <span class="seg s3"></span>
-        <span class="seg s4"></span>
-        <span class="seg s5"></span>
-        <span class="seg s6"></span>
-        <span class="seg s7"></span>
-        <span class="seg s8"></span>
-        <span class="seg s9"></span>
-      </div>
-      </div>
+    <img alt="Steering Wheel" id="steering_wheel" src="/static/images/cockpit/steering_wheel.png">
+    
+    <div class="digital">
+    <span id="weather_display">
+      <img alt="weather_icon" src="{{ current_surface_icon }}" />
+      {{ current_surface }} </span>
     </div>
+
+    <div class="throttlebar-container"> 
+      <span class="digital">10%</span>
+      <div class="throttlebar-wrap">
+        <div class="throttlebar">
+          <span class="seg s1"></span>
+          <span class="seg s2"></span>
+          <span class="seg s3"></span>
+          <span class="seg s4"></span>
+          <span class="seg s5"></span>
+          <span class="seg s6"></span>
+          <span class="seg s7"></span>
+          <span class="seg s8"></span>
+          <span class="seg s9"></span>
+        </div>
+        </div>
+      </div>
+  </div>
 
 
     <div class="video_container" >
@@ -58,3 +71,12 @@
 
   </body>
 </html>
+
+<script type="text/javascript">
+   // Initialize state with server-side values
+  window.serverState = {
+    circuit: "{{ current_circuit if current_circuit else 'Default' }}",
+    current_surface: "{{ current_surface if current_surface else 'Dry' }}",
+    weather_icon: "{{ current_surface_icon if current_surface_icon else '/static/images/cockpit/dry.svg' }}"
+  };
+</script>

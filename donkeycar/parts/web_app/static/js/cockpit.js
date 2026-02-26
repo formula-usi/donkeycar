@@ -1,10 +1,4 @@
- // Initialize state with server-side values
-  window.serverState = {
-    circuit: "{{ current_circuit if current_circuit else 'Default' }}",
-    surface: "{{ current_surface if current_surface else 'Dry' }}",
-    surface_icon: "{{ current_surface_icon if current_surface_icon else '/static/images/weather/dry.png'}}",
-    circuit_icon: "{{ current_circuit_icon if current_circuit_icon else 'Dry' }}"
-  };
+
  
   
   function updateAiThrottleSlider(slider) {
@@ -417,7 +411,7 @@ var driveHandler = new function() {
       // Update surface display with icon
       var surfaceElement = $('#surface_display');
       // Determine which image to show
-      var imageSrc = '/static/images/weather/dry.png'; // default
+      var imageSrc = '/static/images/weather/dry.svg'; // default
 
       // Set color based on surface type
       var surfaceColor = '#337ab7'; // default blue
@@ -431,11 +425,11 @@ var driveHandler = new function() {
       surfaceElement.css('color', surfaceColor);
 
       if (state.surface.toLowerCase() === 'dry') {
-        imageSrc = '/static/images/weather/dry.png';
+        imageSrc = '/static/images/weather/dry.svg';
       } else if (state.surface.toLowerCase() === 'wet') {
-        imageSrc = '/static/images/weather/wet.png';
+        imageSrc = '/static/images/weather/wet.svg';
       } else if (state.surface.toLowerCase() === 'icy') {
-        imageSrc = '/static/images/weather/icy.png';
+        imageSrc = '/static/images/weather/icy.svg';
       }
       //surfaceElement.html(`<img src="${imageSrc}" alt="${state.surface}" title="${state.surface}" height="80">`);
       var surfaceText = state.surface.toUpperCase(); // DRY / WET / ICY
@@ -1072,115 +1066,310 @@ return result;
 // Define the AnalogGauge web component (Speedometer)
 const styles = new CSSStyleSheet();
 styles.replaceSync(`
-	:host {
-		--analog-gauge-segments: 1;
-		--analog-gauge-segments-w: 1deg;
-		--analog-gauge-start-angle: 235deg;
-		--analog-gauge-range: 250deg;
-		--analog-gauge-bdw: 10cqi;
-		--analog-gauge-bg: #0a0, #ff0, #f90, #f00 var(--analog-gauge-range), #0000 0 var(--analog-gauge-range);
-		--analog-gauge-mask-circle: radial-gradient(circle at 50% 50%, #0000 calc(50cqi - var(--analog-gauge-bdw, 10cqi)), #000 0);
-		--analog-gauge-mask-segment: repeating-conic-gradient(
-				from var(--analog-gauge-start-angle, 235deg) at 50% 50%,
-				#000 0 var(--analog-gauge-segments-w, 1deg),
-				#0000 0 calc((var(--analog-gauge-range, 250deg) / var(--analog-gauge-segments, 5))));
-		--analog-gauge-needle-bg: light-dark(#333, #DDD);
-		--analog-gauge-needle-h: 10cqi;
-		--analog-gauge-value-mark-w: 6ch;
+  :host {
+    --analog-gauge-segments: 1;
+    --analog-gauge-segments-w: 1deg;
+    --analog-gauge-start-angle: 235deg;
+    --analog-gauge-range: 250deg;
+    --analog-gauge-bdw: 10cqi;
 
-		--_w: calc(100cqi/3*2);
-		--_vw: calc(100cqi - (2 * var(--analog-gauge-bdw, 10cqi)));
-		--_m: calc(100cqi/6);
+    /* Futuristic palette */
+    --ag-bg0: light-dark(#0b0f16, #080b10);
+    --ag-panel: light-dark(#0f1622, #0b0f16);
+    --ag-metal0: light-dark(#2a323d, #cfd6de);
+    --ag-metal1: light-dark(#10151e, #8f98a4);
+    --ag-glow: #ff3b3b;
+    --ag-glow2: #ff9a3b;
 
-		aspect-ratio: 1;
-    max-height: 200px;
-    max-width: 200px;
-		container-type: inline-size;
-		font-family: var(--analog-clock-ff, ui-sans-serif, system-ui, sans-serif);
-		display: grid;
-		grid-template: repeat(3, 1fr) / repeat(3, 1fr);
-		inline-size: 100%;
-	}
+    --analog-gauge-bg:
+      color-mix(in oklab, #22c55e 80%, #000 20%),
+      color-mix(in oklab, #fde047 85%, #000 15%),
+      color-mix(in oklab, #fb923c 85%, #000 15%),
+      color-mix(in oklab, #ef4444 90%, #000 10%) var(--analog-gauge-range),
+      #0000 0 var(--analog-gauge-range);
 
-	/* === GAUGE === */
-	:host::part(gauge) {
-		background: conic-gradient(from var(--analog-gauge-start-angle, 235deg), var(--analog-gauge-bg));
-		border-radius: 50%;
-		grid-area: 1 / 1 / 4 / 4;
-		mask: var(--analog-gauge-mask-circle), var(--analog-gauge-mask-segment, none);
-		mask-composite: var(--analog-gauge-mask-composite, subtract);
-	}
+    --analog-gauge-mask-circle:
+      radial-gradient(circle at 50% 50%,
+        #0000 calc(50cqi - var(--analog-gauge-bdw, 10cqi)),
+        #000 0
+      );
 
-	/* === LABELS === */
-	:host::part(label) {
-		font-size: var(--analog-gauge-label-fs, 7.5cqi);
-		font-weight: var(--analog-gauge-label-fw, 200);
-		grid-area: 3 / 2 / 4 / 3;
-		isolation: isolate;
-		line-height: 1.2;
-		place-self: var(--analog-gauge-label-ps, center center);
-		text-align: center;
-		text-box: ex alphabetic;
-	}
-	:host::part(label-min),
-	:host::part(label-max) {
-		font-size: var(--analog-gauge-label-fs, 5cqi);
-		font-weight: var(--analog-gauge-label-fw, 400);
-		place-self: center;
-	}
-	:host::part(label-min) { grid-area: 3 / 1 / 4 / 2;}
-	:host::part(label-max) { grid-area: 3 / 3 / 4 / 4; }
-	:host::part(value) {
-		font-size: var(--analog-gauge-value-fs, 15cqi);
-		font-weight: var(--analog-gauge-value-fw, 200);
-		grid-area: 3 / 2 / 4 / 3;
-		isolation: isolate;
-		place-self: start center;
-		text-box: cap alphabetic;
-	}
+    --analog-gauge-mask-segment: repeating-conic-gradient(
+      from var(--analog-gauge-start-angle, 235deg) at 50% 50%,
+      #000 0 var(--analog-gauge-segments-w, 1deg),
+      #0000 0 calc((var(--analog-gauge-range, 250deg) / var(--analog-gauge-segments, 5)))
+    );
 
-	/* === NEEDLE === */
-	:host::part(needle) {
-		align-self: center;
-		background: var(--analog-gauge-needle-bg);
-		clip-path: var(--analog-gauge-needle-cp, polygon(7.5% 50%,78% 0%,83% 35%,83% 65%,78% 100%));
-		grid-area: 2 / 1 / 3 / 3;
-		height: var(--analog-gauge-needle-h);
-		isolation: isolate;
-		mask: radial-gradient(circle at calc(100% - var(--_m)) 50%, #0000 0 2.5cqi, #FFF 2.5cqi);
-		rotate: var(--_d, 0deg);
-		transform-origin: calc(100% - var(--_m)) 50%;
-		width: var(--_w);
-	}
+    --analog-gauge-needle-bg: linear-gradient(180deg,
+      color-mix(in oklab, var(--ag-metal0), #000 35%),
+      color-mix(in oklab, var(--ag-metal1), #000 55%)
+    );
+    --analog-gauge-needle-h: 10cqi;
+    --analog-gauge-value-mark-w: 6ch;
 
-	/* === VALUE MARKS === */
-	:host::part(value-marks) {
-		all: unset;
-		aspect-ratio: 1;
-		background: var(--analog-gauge-values-bg, #0000);
-		border-radius: 50%;
-		box-sizing: border-box;
-		grid-area: 1 / 1 / 4 / 4;
-		list-style: none;
-		place-self: center;
-		position: relative;
-		width: var(--_vw);
-	}
-	:host::part(value-mark) {
-		--_r: calc((var(--_vw) - var(--analog-gauge-value-mark-w)) / 2);
-		--_x: calc(var(--_r) + (var(--_r) * cos(var(--_d))));
-		--_y: calc(var(--_r) + (var(--_r) * sin(var(--_d))));
-		aspect-ratio: var(--analog-gauge-value-mark-asr, 1);
-		color: var(--analog-gauge-value-mark-c, light-dark(#0006, #FFF6));
-		display: grid;
-		font-size: var(--analog-gauge-value-mark-fs, 3cqi);
-		font-weight: var(--analog-gauge-value-mark-fw, 400);
-		left: var(--_x);
-		place-content: center;
-		position: absolute;
-		top: var(--_y);
-		width: var(--analog-gauge-value-mark-w);
-	}
+    --_w: calc(100cqi/3*2);
+    --_vw: calc(100cqi - (2 * var(--analog-gauge-bdw, 10cqi)));
+    --_m: calc(100cqi/6);
+
+    aspect-ratio: 1;
+    container-type: inline-size;
+
+    letter-spacing: 0.02em;
+
+    display: grid;
+    grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+    inline-size: 100%;
+    position: relative;
+    isolation: isolate;
+  }
+
+  /* ===== NEW: BEZEL (metal ring + depth) ===== */
+  :host::part(bezel) {
+    grid-area: 1 / 1 / 4 / 4;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 50% 40%,
+        rgba(255,255,255,0.10),
+        rgba(255,255,255,0.02) 35%,
+        rgba(0,0,0,0.35) 70%,
+        rgba(0,0,0,0.75) 100%
+      ),
+      conic-gradient(from 210deg,
+        rgba(255,255,255,0.10),
+        rgba(0,0,0,0.25),
+        rgba(255,255,255,0.08),
+        rgba(0,0,0,0.35),
+        rgba(255,255,255,0.12)
+      );
+    box-shadow:
+      0 18px 35px rgba(0,0,0,0.55),
+      inset 0 0 0 1px rgba(255,255,255,0.10),
+      inset 0 0 22px rgba(0,0,0,0.55);
+  }
+
+  /* ===== GAUGE RING ===== */
+  :host::part(gauge) {
+    grid-area: 1 / 1 / 4 / 4;
+    border-radius: 50%;
+
+    /* ring + subtle bloom + inner tech texture */
+    background:
+      radial-gradient(circle at 50% 50%,
+        rgba(0,0,0,0.0) 0,
+        rgba(0,0,0,0.0) 55%,
+        rgba(255,255,255,0.06) 56%,
+        rgba(0,0,0,0.0) 62%
+      ),
+      conic-gradient(from var(--analog-gauge-start-angle, 235deg), var(--analog-gauge-bg));
+
+    mask: var(--analog-gauge-mask-circle), var(--analog-gauge-mask-segment, none);
+    mask-composite: var(--analog-gauge-mask-composite, subtract);
+
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.06),
+      inset 0 -18px 32px rgba(0,0,0,0.50);
+    filter: saturate(1.05) contrast(1.05);
+
+    filter: saturate(1.05) contrast(1.05)
+  drop-shadow(0 0 18px color-mix(in oklab, var(--ag-glow), transparent 65%));
+      opacity: 0.7;
+  }
+
+  :host::part(ticks) {
+  grid-area: 1 / 1 / 4 / 4;
+  place-self: center;
+  width: var(--_vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+
+  background:
+    repeating-conic-gradient(
+      from calc(var(--analog-gauge-start-angle,235deg) - 5deg),
+      rgba(255,255,255,0.20) 0 0.25deg,
+      rgba(255,255,255,0.0) 0.25deg 3.2deg
+    ),
+    repeating-conic-gradient(
+      from calc(var(--analog-gauge-start-angle,235deg) - 5deg),
+      rgba(255,255,255,0.30) 0 0.55deg,
+      rgba(255,255,255,0.0) 0.55deg 16deg
+    );
+
+  /* 1) your adjusted ring mask */
+  --_ring-mask: radial-gradient(
+    circle at 50% 50%,
+    #0000 0 calc(70% - 12cqi),
+    #000 0 calc(80% - 8cqi),
+    #0000 0
+  );
+
+  /* 2) angle/sweep mask: only allow ticks inside the gauge sweep */
+  --_sweep-mask: conic-gradient(
+    from var(--analog-gauge-start-angle, 235deg),
+    #000 0 var(--analog-gauge-range, 250deg),
+    #0000 0 360deg
+  );
+
+  /* apply BOTH masks */
+  -webkit-mask: var(--_ring-mask), var(--_sweep-mask);
+          mask: var(--_ring-mask), var(--_sweep-mask);
+
+  /* intersect the two masks */
+  -webkit-mask-composite: source-in; /* WebKit */
+          mask-composite: intersect;  /* Spec */
+
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.06));
+}
+
+  /* ===== LABELS ===== */
+  :host::part(label) {
+    font-size: 7.2cqi;
+    font-weight: 350;
+    grid-area: 3 / 2 / 4 / 3;
+    line-height: 1.15;
+    place-self: center;
+    text-align: center;
+    text-transform: uppercase;
+    color: light-dark(rgba(255,255,255,0.65), rgba(255,255,255,0.75));
+    text-shadow: 0 0 10px rgba(255,255,255,0.08);
+  }
+
+  :host::part(label-min),
+  :host::part(label-max) {
+    font-size: 4.8cqi;
+    font-weight: 500;
+    place-self: center;
+    color: light-dark(rgba(255,255,255,0.45), rgba(255,255,255,0.60));
+  }
+  :host::part(label-min) { grid-area: 3 / 1 / 4 / 2; }
+  :host::part(label-max) { grid-area: 3 / 3 / 4 / 4; }
+
+  :host::part(value) {
+    font-size: 14.5cqi;
+    font-weight: 300;
+    grid-area: 3 / 2 / 4 / 3;
+    place-self: start center;
+    color: rgba(255,255,255,0.88);
+    text-shadow:
+      0 0 14px rgba(255,255,255,0.10),
+      0 0 22px rgba(255,59,59,0.10);
+  }
+
+  /* ===== NEEDLE ===== */
+  :host::part(needle) {
+    grid-area: 2 / 1 / 3 / 3;
+    place-self: center start;
+
+    height: var(--analog-gauge-needle-h);
+    width: var(--_w);
+    rotate: var(--_d, 0deg);
+    transform-origin: calc(100% - var(--_m)) 50%;
+
+    /* metal + emissive edge */
+    background:
+      linear-gradient(180deg,
+        rgba(255,255,255,0.22),
+        rgba(255,255,255,0.02) 35%,
+        rgba(0,0,0,0.35) 100%
+      ),
+      var(--analog-gauge-needle-bg);
+
+    clip-path: polygon(6% 50%, 76% 2%, 84% 35%, 84% 65%, 76% 98%);
+
+    /* pivot hole */
+    mask: radial-gradient(circle at calc(100% - var(--_m)) 50%,
+      #0000 0 2.6cqi,
+      #000 2.7cqi
+    );
+
+    box-shadow:
+      0 0 18px rgba(255,59,59,0.18),
+      0 0 40px rgba(255,59,59,0.08),
+      inset 0 0 0 1px rgba(255,255,255,0.10);
+
+    filter: saturate(1.05);
+  }
+
+  /* ===== NEW: HUB (pivot cap) ===== */
+  :host::part(hub) {
+    grid-area: 2 / 2 / 3 / 3;
+    place-self: center;
+    width: 16cqi;
+    aspect-ratio: 1;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 35% 30%,
+        rgba(255,255,255,0.18),
+        rgba(255,255,255,0.04) 35%,
+        rgba(0,0,0,0.55) 70%,
+        rgba(0,0,0,0.85) 100%
+      ),
+      conic-gradient(from 200deg,
+        rgba(255,255,255,0.18),
+        rgba(0,0,0,0.55),
+        rgba(255,255,255,0.10),
+        rgba(0,0,0,0.55)
+      );
+    box-shadow:
+      0 10px 18px rgba(0,0,0,0.45),
+      inset 0 0 0 1px rgba(255,255,255,0.10),
+      inset 0 0 16px rgba(255,59,59,0.10);
+  }
+
+  /* ===== VALUE MARKS ===== */
+  :host::part(value-marks) {
+    all: unset;
+    grid-area: 1 / 1 / 4 / 4;
+    place-self: center;
+    width: var(--_vw);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    list-style: none;
+    position: relative;
+    color: rgba(255,255,255,0.55);
+    text-shadow: 0 0 10px rgba(0,0,0,0.65);
+  }
+
+  :host::part(value-mark) {
+    --_r: calc((var(--_vw) - var(--analog-gauge-value-mark-w)) / 2);
+    --_x: calc(var(--_r) + (var(--_r) * cos(var(--_d))));
+    --_y: calc(var(--_r) + (var(--_r) * sin(var(--_d))));
+
+    position: absolute;
+    left: var(--_x);
+    top: var(--_y);
+
+    width: var(--analog-gauge-value-mark-w);
+    display: grid;
+    place-content: center;
+
+    font-size: 3.1cqi;
+    font-weight: 500;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 0.06em;
+  }
+
+  /* ===== NEW: GLASS (reflection + vignette, sits on top) ===== */
+  :host::part(glass) {
+    grid-area: 1 / 1 / 4 / 4;
+    border-radius: 50%;
+    pointer-events: none;
+
+    background:
+      radial-gradient(circle at 50% 80%,
+        rgba(0,0,0,0.0) 0,
+        rgba(0,0,0,0.10) 55%,
+        rgba(0,0,0,0.35) 100%
+      ),
+      linear-gradient(135deg,
+        rgba(255,255,255,0.20) 0%,
+        rgba(255,255,255,0.06) 18%,
+        rgba(255,255,255,0.00) 40%
+      );
+
+    mix-blend-mode: screen;
+    opacity: 0.55;
+    filter: blur(0.15cqi);
+  }
 `);
 
 class AnalogGauge extends HTMLElement {
@@ -1210,13 +1399,18 @@ class AnalogGauge extends HTMLElement {
 		this.#units.totalRange = this.#units.range;
 
 		this.#root.innerHTML = `
-			<div part="gauge"></div>
-			${this.#generateValueMarks()}
-			<div part="needle"></div>
-			<div part="value"></div>
-			<div part="label">${this.getAttribute('label')||''}</div>
-			<div part="label-min">${this.getAttribute('min-label')||''}</div>
-			<div part="label-max">${this.getAttribute('max-label')||''}</div>`;
+      <div part="bezel"></div>
+      <div part="gauge"></div>
+      <div part="ticks"></div>
+      ${this.#generateValueMarks()}
+      <div part="needle"></div>
+      <div part="hub"></div>
+      <div part="value"></div>
+      <div part="label">${this.getAttribute('label')||''}</div>
+      <div part="label-min">${this.getAttribute('min-label')||''}</div>
+      <div part="label-max">${this.getAttribute('max-label')||''}</div>
+      <div part="glass"></div>
+`;
 
 		this.#value = this.#root.querySelector('[part="value"]');
 	}

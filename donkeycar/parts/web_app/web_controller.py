@@ -580,11 +580,11 @@ class CockpitAPI(RequestHandler):
     def get(self):
         # Map surface to icon path
         surface_icons = {
-            "Dry": "/static/images/weather/dry.png",
-            "Wet": "/static/images/weather/wet.png",
-            "Icy": "/static/images/weather/icy.png"
+            "Dry": "/static/images/weather/dry.svg",
+            "Wet": "/static/images/weather/wet.svg",
+            "Icy": "/static/images/weather/icy.svg"
         }
-        current_surface_icon = surface_icons.get(self.application.surface, "/static/images/weather/dry.png")
+        current_surface_icon = surface_icons.get(self.application.surface, "/static/images/weather/dry.svg")
         angle_to_print = float(self.application.throttle) if abs(float(self.application.throttle)) > 0.05 else 0
         data = {
             "current_ai_mul": str(self.application.cfg.AI_THROTTLE_MULT if self.application.cfg is not None else 0.0),
@@ -595,6 +595,8 @@ class CockpitAPI(RequestHandler):
             "throttle": self.application.throttle,
             "angle": angle_to_print
         }
+        tornado.locale.load_translations(os.path.join(self.application.static_file_path, "locale"))
+        tornado.locale.set_default_locale('en')
         self.render("templates/cockpit.html", **data)
 
 
@@ -638,11 +640,11 @@ class CircuitAPI(RequestHandler):
             changes['surface'] = self.application.surface
             # Also send the updated surface icon
             surface_icons = {
-                "Dry": "/static/images/weather/dry.png",
-                "Wet": "/static/images/weather/wet.png",
-                "Icy": "/static/images/weather/icy.png"
+                "Dry": "/static/images/weather/dry.svg",
+                "Wet": "/static/images/weather/wet.svg",
+                "Icy": "/static/images/weather/icy.svg"
             }
-            changes['surface_icon'] = surface_icons.get(self.application.surface, "/static/images/weather/dry.png")
+            changes['surface_icon'] = surface_icons.get(self.application.surface, "/static/images/weather/dry.svg")
         if data.get('circuit_icon') is not None:
             self.application.circuit_icon = data['circuit_icon']
             changes['circuit_icon'] = self.application.circuit_icon

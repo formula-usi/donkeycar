@@ -1,224 +1,247 @@
 @font-face {
-	font-family: "Satoshi";
-	src: url("/static/fonts/Satoshi/Satoshi-Regular.otf") format("opentype");
-	font-weight: 400;
-	font-style: normal;
-	font-display: swap;
+  font-family: "Satoshi";
+  src: url("/static/fonts/Satoshi/Satoshi-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
-
 @font-face {
-	font-family: "Satoshi";
-	src: url("/static/fonts/Satoshi/Satoshi-Medium.otf") format("opentype");
-	font-weight: 500;
-	font-style: normal;
-	font-display: swap;
+  font-family: "Satoshi";
+  src: url("/static/fonts/Satoshi/Satoshi-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
 }
-
 @font-face {
-	font-family: "Satoshi";
-	src: url("/static/fonts/Satoshi/Satoshi-Bold.otf") format("opentype");
-	font-weight: 700;
-	font-style: normal;
-	font-display: swap;
+  font-family: "Satoshi";
+  src: url("/static/fonts/Satoshi/Satoshi-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
 }
-
 @font-face {
-	font-family: "Satoshi";
-	src: url("/static/fonts/Satoshi/Satoshi-Black.otf") format("opentype");
-	font-weight: 900;
-	font-style: normal;
-	font-display: swap;
+  font-family: "Satoshi";
+  src: url("/static/fonts/Satoshi/Satoshi-Black.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
 }
-
 @font-face {
-	font-family: "Satoshi";
-	src: url("/static/fonts/Satoshi/Satoshi-Light.otf") format("opentype");
-	font-weight: 300;
-	font-style: normal;
-	font-display: swap;
+  font-family: "Satoshi";
+  src: url("/static/fonts/Satoshi/Satoshi-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
 }
-
 @font-face {
-	font-family: "Satoshi";
-	src: url("/static/fonts/Satoshi/Satoshi-BoldItalic.otf") format("opentype");
-	font-weight: 700;
-	font-style: italic;
-	font-display: swap;
+  font-family: "Satoshi";
+  src: url("/static/fonts/Satoshi/Satoshi-BoldItalic.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
 }
-
 @font-face {
-	font-family: "Satoshi";
-	src: url("/static/fonts/Satoshi/Satoshi-BlackItalic.otf") format("opentype");
-	font-weight: 900;
-	font-style: italic;
-	font-display: swap;
-}
-
-body {
-	font-family: "Satoshi", sans-serif;
-	font-weight: 700;
-	background: black;
-	overflow: hidden;
+  font-family: "Satoshi";
+  src: url("/static/fonts/Satoshi/Satoshi-BlackItalic.otf") format("opentype");
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
 }
 
 * {
-	font-weight: inherit;
-	margin: 0;
-	padding: 0;
-	box-sizing: border-box;
+  font-weight: inherit;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Satoshi", sans-serif;
+  font-weight: 700;
+  background: black;
+  overflow: hidden;
+}
+
+.content {
+  background:
+    radial-gradient(
+      ellipse at center,
+      #00000000 45%,
+      rgba(0, 0, 0, 0.45) 62%,
+      rgb(0 0 0) 74%
+    ),
+    url("/static/images/cockpit/background2.png");
+  background-repeat: no-repeat;
+  background-size: 100vw 100vh;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+  z-index: 100;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  padding-top: 2.4vh;
+  padding-left: 3vw;
+  justify-content: space-between;
+  max-width: 70vw;
 }
 
 .logo {
-	position: absolute;
-	z-index: 1;
-	height: 8vh;
-	top: 2vh;
-}
-
-.logo_si {
-	left: 5vw;
+  height: 8vh;
 }
 
 .logo_formula_usi {
-	left: 11vw;
-	filter: contrast(0);
+  margin-left: 1vw;
 }
 
-.logo_formula_usi:nth-child(3) {
-	filter: none;
-	mix-blend-mode: color;
+.digital {
+  font-weight: 100;
+  color: #1cffa8;
+  font-size: 2vh;
+  letter-spacing: 0.2rem;
+  text-transform: uppercase;
 }
 
-.info_container {
-	position: absolute;
-	top: 5.5vh;
-	font-weight: 100;
-	color: #1cffa8;
-	font-size: 2vh;
-	letter-spacing: 0.3rem;
+#circuit_display {
+  color: #2fd6ee;
 }
 
-.circuit {
-	right: 25vw;
+#circuit_image {
+	width: 14vw;
+    position: absolute;
+    right: 4vw;
+    top: 4vh;
+    opacity: 0.7;
 }
 
-.weather {
-	right: 40vw;
-}
-
-
-.content {
-	background: radial-gradient(ellipse at center, #00000000 45%, rgba(0, 0, 0, 0.45) 62%, rgb(0 0 0) 74%), url('/static/images/cockpit/background.png');
-	background-repeat: no-repeat;
-	background-size: 100vw 100vh;
-	height: 100vh;
-	width: 100vw;
-	position: relative;
-	z-index: 100;
+#weather_display {
+    position: absolute;
+    bottom: 11vh;
+    right: 22vw;
 }
 
 .screen {
-	position: relative;
-	width: 100%;
-	height: 100vh;
+  position: relative;
+  width: 100%;
+  height: 100vh;
 }
 
 .grid-overlay {
-	position: absolute;
-	inset: 0;
-	z-index: 0;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
 
-	background-image:
-		linear-gradient(to right, #d1d5db 1px, transparent 1px),
-		linear-gradient(to bottom, #d1d5db 1px, transparent 1px);
-	background-size: 32px 32px;
+  background-image:
+    linear-gradient(to right, #d1d5db 1px, transparent 1px),
+    linear-gradient(to bottom, #d1d5db 1px, transparent 1px);
+  background-size: 32px 32px;
 
-	/* center transparent, outside visible */
-	-webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, #000 70%);
-	mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, #000 70%);
+  /* center transparent, outside visible */
+  -webkit-mask-image: radial-gradient(
+    ellipse 80% 80% at 50% 50%,
+    transparent 40%,
+    #000 70%
+  );
+  mask-image: radial-gradient(
+    ellipse 80% 80% at 50% 50%,
+    transparent 40%,
+    #000 70%
+  );
 }
 
 #steering_wheel {
+  position: absolute;
+  bottom: 0;
+  left: 25vw;
+  height: 60vh;
+  width: 50vw;
+}
+
+.throttlebar-container {
 	position: absolute;
-	bottom: 2vh;
-	left: 25vw;
-	height: 60vh;
-	width: 50vw;
+	bottom: 10vh;
+	right: 15.5vw;
+	display: flex;
+    justify-content: center;
+    align-items: end;
+    gap: 0.3vw;
 }
 
 .throttlebar-wrap {
-	position: absolute;
-	width: 52px;
-	height: 170px;
-	bottom: 1vh;
-	right: 14vw;
+	width: 2vw;
 }
 
 .throttlebar {
-	position: relative;
-	inset: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-	/* spacing between segments */
-	border-radius: 12px;
+  position: relative;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5vh;
+  /* spacing between segments */
+  border-radius: 12px;
 
-	/* subtle frame/backplate (optional) */
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.12));
-	box-shadow:
-		inset 0 0 0 1px rgba(255, 255, 255, 0.10),
-		inset 0 0 18px rgba(0, 0, 0, 0.55);
-	overflow: hidden;
+  /* subtle frame/backplate (optional) */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06),
+    rgba(0, 0, 0, 0.12)
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 0 18px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
 }
 
 .seg {
-	display: block;
-	height: 12px;
-	border-radius: 3px;
-	background: rgba(255, 255, 255, 0.18);
-	box-shadow:
-		inset 0 1px 0 rgba(255, 255, 255, 0.20),
-		0 0 10px rgba(0, 0, 0, 0.35);
+  display: block;
+  height: 0.8vh;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 10px rgba(0, 0, 0, 0.35);
 }
 
 .s1 {
-	background: #d61515;
+  background: #d61515;
 }
 
 .s2 {
-	background: #e0371c;
+  background: #e0371c;
 }
 
 .s3 {
-	background: #ea5a1f;
+  background: #ea5a1f;
 }
 
 .s4 {
-	background: #f07b22;
+  background: #f07b22;
 }
 
 .s5 {
-	background: #f3a21f;
+  background: #f3a21f;
 }
 
 .s6 {
-	background: #e8d31b;
+  background: #e8d31b;
 }
 
 .s7 {
-	background: #79d018;
+  background: #79d018;
 }
 
 .s8 {
-	background: #2fc022;
+  background: #2fc022;
 }
 
 .s9 {
-	background: #11a83a;
+  background: #11a83a;
 }
 
 .seg {
-	filter: saturate(1.05);
+  filter: saturate(1.05);
 }
 
 .s1,
@@ -230,33 +253,35 @@ body {
 .s7,
 .s8,
 .s9 {
-	box-shadow:
-		inset 0 1px 0 rgba(255, 255, 255, 0.22),
-		0 0 10px rgba(255, 255, 255, 0.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 0 10px rgba(255, 255, 255, 0.05);
 }
 
 .bar[data-level] .seg {
-	opacity: 0.22;
+  opacity: 0.22;
 }
 
 .speedometer_gauge {
-	width: 11vw;
-	height: 21vh;
+	width: 13vw;
+	height: 20vh;
 	position: absolute;
-	bottom: 5vh;
-	left: 10.5vw;
+	bottom: 8vh;
+	left: 9.5vw;
+	background: #1a1a1a;
+	border-radius: 100%;
 }
 
 .video_container {
-	position: absolute;
-	width: 100vw;
-	height: 100vh;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
+  position: absolute;
+  width: 100vw;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 .video_container * {
-	height: 100%;
-	width: 100%;
+  height: 100%;
+  width: 100%;
 }
