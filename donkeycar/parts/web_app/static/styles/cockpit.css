@@ -104,7 +104,7 @@ body {
 
 
 .content {
-	background: radial-gradient(ellipse at center, #00000000 45%, rgba(0, 0, 0, 0.45) 62%, rgb(0 0 0) 74%), url('/static/images/dashboard/background.png');
+	background: radial-gradient(ellipse at center, #00000000 45%, rgba(0, 0, 0, 0.45) 62%, rgb(0 0 0) 74%), url('/static/images/cockpit/background.png');
 	background-repeat: no-repeat;
 	background-size: 100vw 100vh;
 	height: 100vh;

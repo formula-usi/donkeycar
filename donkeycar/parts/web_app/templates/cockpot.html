@@ -3,16 +3,16 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Formula USI </title>
-  <link rel="icon" type="image/x-icon" href="/static/images/dashboard/formula_usi.png">
-  <script type="text/javascript" src="/static/js/dashboard.js"></script>
-  <link href="/static/styles/dashboard.css" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="/static/images/cockpit/formula_usi.png">
+  <script type="text/javascript" src="/static/js/cockpit.js"></script>
+  <link href="/static/styles/cockpit.css" rel="stylesheet">
 </head>
 
 <body>
   <div class="logos">
-      <img src="/static/images/dashboard/si_logo.webp" class="logo logo_si">
-      <img src="/static/images/dashboard/formula_usi.png" class="logo logo_formula_usi">
-      <img src="/static/images/dashboard/formula_usi.png" class="logo logo_formula_usi">
+      <img src="/static/images/cockpit/si_logo.webp" class="logo logo_si">
+      <img src="/static/images/cockpit/formula_usi.png" class="logo logo_formula_usi">
+      <img src="/static/images/cockpit/formula_usi.png" class="logo logo_formula_usi">
   </div>
 
 
@@ -75,7 +75,7 @@
           <!-- Show Speedometer -->
           <analog-gauge  id="speedometer_gauge" class="speedometer_gauge" value="100" min-label="Low" max-label="High" values="11"></analog-gauge>
           <div>
-            <img id="steering_wheel" src="/static/images/dashboard/steering_wheel.png">
+            <img id="steering_wheel" src="/static/images/cockpit/steering_wheel.png">
           </div>
           <!-- 
           <div class="speedometer">
@@ -336,48 +336,5 @@
     }
   });
 </script>
-<style>
-    /* Custom styling for AI throttle range slider */
-    .ai-throttle-range {
-      -webkit-appearance: none;
-      appearance: none;
-      height: 8px;
-      border-radius: 5px;
-      background: #ddd;
-      outline: none;
-      opacity: 0.7;
-      transition: opacity 0.2s;
-    }
-    
-    .ai-throttle-range:hover {
-      opacity: 1;
-    }
-    
-    .ai-throttle-range::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 15px;
-      height: 15px;
-      border-radius: 50%;
-      background: #990000;
-      cursor: pointer;
-    }
-    
-    .ai-throttle-range::-moz-range-thumb {
-      width: 15px;
-      height: 15px;
-      border-radius: 50%;
-      background: #990000;
-      cursor: pointer;
-      border: none;
-    }
-    
-    /* Firefox specific styling for filled portion */
-    .ai-throttle-range::-moz-range-progress {
-      background: #cc3333;
-      height: 8px;
-      border-radius: 5px;
-    }
-  </style>
 </body>
 </html>

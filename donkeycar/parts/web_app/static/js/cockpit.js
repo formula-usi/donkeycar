@@ -57,7 +57,6 @@ var driveHandler = new function() {
     var socket
 
     this.load = function() {
-      // console.log('Dashboard main_show.js loading...');
       // Initialize state with server-side values if available
       if (window.serverState) {
         if (window.serverState.circuit !== undefined) state.circuit = window.serverState.circuit;
@@ -99,15 +98,15 @@ var driveHandler = new function() {
       window.donkeySocket = socket;
       
       socket.onopen = function() {
-        console.log('Dashboard WebSocket connected to /wsDrive');
+        console.log('Cockpit WebSocket connected to /wsDrive');
       };
       
       socket.onerror = function(error) {
-        console.error('Dashboard WebSocket error:', error);
+        console.error('Cockpit WebSocket error:', error);
       };
       
       socket.onclose = function() {
-        console.log('Dashboard WebSocket closed');
+        console.log('Cockpit WebSocket closed');
       };
 
       setBindings()
@@ -189,9 +188,7 @@ var driveHandler = new function() {
       //
       socket.onmessage = function (event) {
         const data = JSON.parse(event.data);
-        // console.log('Dashboard received WebSocket data:', data);
         if(updateState(state, data)) {
-            // console.log('Dashboard state updated, new angle:', state.tele.user.angle, 'new throttle:', state.tele.user.throttle);
             updateUI();
         }
       };
@@ -342,7 +339,7 @@ var driveHandler = new function() {
       $('#mode_select').val(state.driveMode);
       $('#circuit_display').text(state.circuit);
       
-      // console.log('Dashboard updateUI - angle:', state.tele.user.angle, 'throttle:', state.tele.user.throttle);
+      // console.log('Cockpit updateUI - angle:', state.tele.user.angle, 'throttle:', state.tele.user.throttle);
       
       // Update circuit image
       var circuitImageElement = $('#circuit_image');

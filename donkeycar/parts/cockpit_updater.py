@@ -1,4 +1,4 @@
-class DashboardUpdater:
+class CockpitUpdater:
 
     def __init__(self, socket_update_fn = None):
         self.socket_update_fn = socket_update_fn

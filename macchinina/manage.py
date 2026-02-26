@@ -37,7 +37,7 @@ from donkeycar.parts.throttle_filter import ThrottleFilter
 from donkeycar.parts.behavior import BehaviorPart
 from donkeycar.parts.file_watcher import FileWatcher
 from donkeycar.parts.launch import AiLaunch
-from donkeycar.parts.dashboard_updater import DashboardUpdater
+from donkeycar.parts.cockpit_updater import CockpitUpdater
 from donkeycar.parts.speed_limiter import SpeedLimiter
 from donkeycar.parts.weather_applier import WeatherApplier
 
@@ -462,7 +462,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
           inputs=['user/mode', 'user/angle', 'user/throttle',
                   'pilot/angle', 'pilot/throttle'],
           outputs=['steering', 'throttle'])
-    V.add(DashboardUpdater(socket_update_fn), inputs=['steering', 'throttle'], outputs=[])
+    V.add(CockpitUpdater(socket_update_fn), inputs=['steering', 'throttle'], outputs=[])
     V.add(WeatherApplier(), inputs=['steering', 'throttle', 'surface'], outputs=['steering', 'throttle'])
 
     if (cfg.CONTROLLER_TYPE != "pigpio_rc") and (cfg.CONTROLLER_TYPE != "MM1"):

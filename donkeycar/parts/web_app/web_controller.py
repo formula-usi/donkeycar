@@ -141,7 +141,7 @@ class LocalWebController(tornado.web.Application):
         handlers = [
             (r"/", RedirectHandler, dict(url="/drive")),
             (r"/drive", DriveAPI, dict(ai_throttle_mul=self.cfg.AI_THROTTLE_MULT if self.cfg is not None else 0.0)),
-            (r"/dashboard", DashboardAPI),
+            (r"/cockpit", CockpitAPI),
             (r"/wsDrive", WebSocketDriveAPI, dict(cfg=self.cfg)),
             (r"/api/drive", DrivePostAPI),  # Separate endpoint for POST requests from joystick
             (r"/wsCalibrate", WebSocketCalibrateAPI),
@@ -574,8 +574,8 @@ class VideoAPI(RequestHandler):
 
             await tornado.gen.sleep(0.005)
 
-class DashboardAPI(RequestHandler):
-    """Serves the dashboard web page using dashboard.html"""
+class CockpitAPI(RequestHandler):
+    """Serves the cockpit web page using cockpit.html"""
     
     def get(self):
         # Map surface to icon path
@@ -595,7 +595,7 @@ class DashboardAPI(RequestHandler):
             "throttle": self.application.throttle,
             "angle": angle_to_print
         }
-        self.render("templates/dashboard.html", **data)
+        self.render("templates/cockpit.html", **data)
 
 
 class CircuitAPI(RequestHandler):
