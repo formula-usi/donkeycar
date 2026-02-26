@@ -2,7 +2,7 @@
 import pytest
 import json
 import os
-from donkeycar.parts.web_app.controller import LocalWebController
+from donkeycar.parts.web_app.web_controller import LocalWebController
 import donkeycar.templates.cfg_complete as cfg
 from importlib import reload
 

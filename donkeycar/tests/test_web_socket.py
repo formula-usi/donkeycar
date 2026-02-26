@@ -4,7 +4,7 @@ import tornado.web
 import tornado.ioloop
 import json
 from unittest.mock import Mock
-from donkeycar.parts.web_app.controller import WebSocketCalibrateAPI
+from donkeycar.parts.web_app.web_controller import WebSocketCalibrateAPI
 from time import sleep
 
 SLEEP = 0.5

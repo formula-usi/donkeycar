@@ -3,7 +3,7 @@
 """
 Created on Sat Jun 24 20:10:44 2017
 @author: wroscoe
-controller.py
+web_controller.py
 The client and web server needed to control a car remotely.
 """
 
@@ -264,7 +264,7 @@ class DriveAPI(RequestHandler):
             "current_surface": self.application.surface,
             "current_circuit_icon": self.application.circuit_icon
         }
-        self.render("templates/vehicle.html", **data)
+        self.render("templates/drive.html", **data)
 
     def post(self):
         '''
@@ -528,8 +528,7 @@ class VideoAPI(RequestHandler):
 
     async def get(self):
         placeholder_image = utils.load_image_sized(
-                        os.path.join(self.application.static_file_path,
-                                     "img_placeholder.jpg"), 160, 120, 3)
+                        os.path.join(self.application.static_file_path, "images/img_placeholder.jpg"), 160, 120, 3)
 
         self.set_header("Content-type",
                         "multipart/x-mixed-replace;boundary=--boundarydonotcross")
@@ -576,7 +575,7 @@ class VideoAPI(RequestHandler):
             await tornado.gen.sleep(0.005)
 
 class DashboardAPI(RequestHandler):
-    """Serves the dashboard web page using vehicle_show.html"""
+    """Serves the dashboard web page using dashboard.html"""
     
     def get(self):
         # Map surface to icon path
@@ -596,7 +595,7 @@ class DashboardAPI(RequestHandler):
             "throttle": self.application.throttle,
             "angle": angle_to_print
         }
-        self.render("templates/vehicle_show.html", **data)
+        self.render("templates/dashboard.html", **data)
 
 
 class CircuitAPI(RequestHandler):
@@ -621,7 +620,7 @@ class CircuitAPI(RequestHandler):
 
     def get(self):
         data = {"current_circuit": self.circuit, "current_surface": self.surface, "circuit_icon": self.circuit_icon}
-        self.render("templates/vehicle.html", **data)
+        self.render("templates/drive.html", **data)
 
     def post(self):
         '''
