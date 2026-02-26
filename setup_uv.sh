@@ -136,12 +136,17 @@ setup_uv_environment() {
         print_info "Setting up NVIDIA NCG container for DGC Spark"
         docker build --build-arg USERNAME=$USER --build-arg USER_UID=$(id -u) --build-arg USER_GID=$(id -g) -t phaenomena:1.0 . 
         docker rm phaenomena
-        # docker run --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -it --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/macchinina,target=/home/formulausi/macchinina --name phaenomena phaenomena:1.0 /bin/bash
+        docker run --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -it --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/macchinina,target=/home/formulausi/macchinina --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/scripts,target=/home/formulausi/scripts --name phaenomena phaenomena:1.0 /bin/bash
 
         #temp
-        docker run --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -it --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/macchinina,target=/home/formulausi/macchinina --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/donkeycar/parts,target=/home/formulausi/donkeycar/parts  --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/donkeycar/pipeline,target=/home/formulausi/donkeycar/pipeline --name phaenomena phaenomena:1.0 /bin/bash
+        # docker run --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -it --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/macchinina,target=/home/formulausi/macchinina --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/donkeycar/parts,target=/home/formulausi/donkeycar/parts  --mount type=bind,source=/home/formulausi/Phaenomena/donkeycar/donkeycar/pipeline,target=/home/formulausi/donkeycar/pipeline --name phaenomena phaenomena:1.0 /bin/bash
 
         exit 0
+    fi
+    if [[ "$platform" == "pi" ]]; then
+        sudo apt-get install build-essential python3 python3-dev python3-pip python3-virtualenv python3-numpy python3-picamera python3-pandas python3-rpi.gpio i2c-tools avahi-utils joystick libopenjp2-7-dev libtiff5-dev gfortran libatlas-base-dev libopenblas-dev libhdf5-serial-dev libgeos-dev git ntp
+        sudo apt-get install libilmbase-dev libopenexr-dev libgstreamer1.0-dev libjasper-dev libwebp-dev libatlas-base-dev libavcodec-dev libavformat-dev libswscale-dev
+        sudo apt install libcap-dev libhdf5-dev libhdf5-serial-dev
     fi
 
     print_info "Setting up UV environment for platform: $platform"

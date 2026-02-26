@@ -7,12 +7,39 @@ This script evaluates a trained uncertainty model on validation data and:
 2. Separates images into confident/uncertain folders based on variance threshold
 3. Generates summary statistics
 
+Supports multiple model types:
+- fastai_linear_unc: FastAI linear model with uncertainty
+- fastai_linear_mw_unc: FastAI multi-weather linear model with uncertainty
+- fastai_mobilenet_unc / mobilenet_unc: MobileNet with uncertainty estimation
+
+Note: The script can also work with non-uncertainty models (e.g., fastai_mobilenet, 
+fastai_linear) by setting all uncertainties to 0.0. In this case, all predictions 
+will be classified as "confident".
+
 Usage:
+    # FastAI Linear Uncertainty Model
     python validate_uncertainty.py --model models/my_model.pt \
                                    --tub data/my_tub \
                                    --indexes validation_indexes.json \
                                    --threshold 0.1 \
                                    --output validation_results
+    
+    # MobileNet Uncertainty Model
+    python validate_uncertainty.py --model models/mobilenet_model.pt \
+                                   --tub data/my_tub \
+                                   --indexes validation_indexes.json \
+                                   --model-type fastai_mobilenet_unc \
+                                   --threshold 0.1 \
+                                   --output validation_results_mobilenet
+    
+    # MobileNet with custom settings
+    python validate_uncertainty.py --model models/mobilenet_model.pt \
+                                   --tub data/my_tub \
+                                   --indexes validation_indexes.json \
+                                   --model-type mobilenet_unc \
+                                   --no-mobilenet-pretrained \
+                                   --no-mobilenet-auto-resize \
+                                   --threshold 0.1
 """
 
 import argparse
@@ -56,19 +83,89 @@ def load_validation_indexes(json_path: str) -> List[int]:
     raise ValueError(f"Invalid JSON format in {json_path}. Expected list or dict with 'validation_indexes' key")
 
 
-def load_model(model_path: str, model_type: str = 'fastai_linear_unc'):
+def load_model(model_path: str, model_type: str = 'fastai_linear_unc', 
+               input_shape: tuple = (120, 160, 3), **model_kwargs):
     """Load the trained uncertainty model."""
     logger.info(f"Loading model from {model_path}")
+    logger.info(f"Model type: {model_type}")
     
-    # Get the model instance
-    kl = get_model_by_type(model_type, cfg=None)
+    # Import necessary modules
+    from donkeycar.parts.interpreter import FastAIInterpreter
+    
+    # Create the model instance based on type
+    interpreter = FastAIInterpreter()
+    
+    if model_type == 'fastai_linear_unc':
+        from donkeycar.parts.fastai import FastAIUncertainty
+        kl = FastAIUncertainty(interpreter=interpreter, input_shape=input_shape)
+    elif model_type == 'fastai_linear_mw_unc':
+        from donkeycar.parts.fastai import FastAILinearMWUncertainty
+        n_weathers = model_kwargs.get('n_weathers', 3)
+        kl = FastAILinearMWUncertainty(interpreter=interpreter, input_shape=input_shape, 
+                                       n_weathers=n_weathers)
+    elif model_type == 'fastai_mobilenet_unc' or model_type == 'mobilenet_unc':
+        from donkeycar.parts.mobilenet import FastAIMobileNetUncertainty
+        freeze_backbone = model_kwargs.get('freeze_backbone', False)  # Frozen for inference
+        dropout = model_kwargs.get('dropout', 0.2)
+        pretrained = model_kwargs.get('pretrained', True)
+        loss_type = model_kwargs.get('loss_type', 'nll')
+        use_imagenet_norm = model_kwargs.get('use_imagenet_normalization', True)
+        auto_resize = model_kwargs.get('auto_resize_224', True)
+        
+        logger.info(f"MobileNet config: freeze_backbone={freeze_backbone}, "
+                   f"pretrained={pretrained}, auto_resize_224={auto_resize}")
+        
+        kl = FastAIMobileNetUncertainty(
+            interpreter=interpreter, 
+            input_shape=input_shape,
+            freeze_backbone=freeze_backbone, 
+            dropout=dropout,
+            pretrained=pretrained, 
+            loss_type=loss_type,
+            use_imagenet_normalization=use_imagenet_norm,
+            auto_resize_224=auto_resize
+        )
+    elif model_type == 'fastai_mobilenet' or model_type == 'mobilenet':
+        # Non-uncertainty MobileNet model
+        from donkeycar.parts.mobilenet import FastAIMobileNet
+        freeze_backbone = model_kwargs.get('freeze_backbone', False)
+        dropout = model_kwargs.get('dropout', 0.2)
+        pretrained = model_kwargs.get('pretrained', True)
+        use_imagenet_norm = model_kwargs.get('use_imagenet_normalization', True)
+        auto_resize = model_kwargs.get('auto_resize_224', True)
+        
+        logger.info(f"MobileNet (non-uncertainty) config: freeze_backbone={freeze_backbone}, "
+                   f"pretrained={pretrained}, auto_resize_224={auto_resize}")
+        logger.warning("Using non-uncertainty model - all uncertainties will be set to 0.0")
+        
+        kl = FastAIMobileNet(
+            interpreter=interpreter, 
+            input_shape=input_shape,
+            freeze_backbone=freeze_backbone, 
+            dropout=dropout,
+            pretrained=pretrained,
+            use_imagenet_normalization=use_imagenet_norm,
+            auto_resize_224=auto_resize
+        )
+    elif model_type == 'fastai_linear':
+        # Non-uncertainty linear model
+        from donkeycar.parts.fastai import FastAILinear
+        logger.warning("Using non-uncertainty model - all uncertainties will be set to 0.0")
+        kl = FastAILinear(interpreter=interpreter, input_shape=input_shape)
+    else:
+        # Fallback to get_model_by_type for other model types
+        # Note: This may fail if cfg is required
+        logger.warning(f"Using fallback loading for model type: {model_type}")
+        kl = get_model_by_type(model_type, cfg=None)
     
     # Load the trained weights
+    logger.info(f"Loading weights from {model_path}")
     kl.load(model_path)
     
     # Set to evaluation mode
     if hasattr(kl.interpreter, 'model'):
         kl.interpreter.model.eval()
+        logger.info("Model set to evaluation mode")
     
     return kl
 
@@ -85,7 +182,21 @@ def evaluate_single_image(model, img_array: np.ndarray, record: Dict) -> Tuple[f
     throttle_gt = record['user/throttle']
     
     # Run inference
-    angle_pred, throttle_pred, angle_std, throttle_std = model.run(img_array)
+    outputs = model.run(img_array)
+    
+    # Handle both uncertainty and non-uncertainty models
+    if len(outputs) == 4:
+        # Uncertainty model: (angle, throttle, angle_std, throttle_std)
+        angle_pred, throttle_pred, angle_std, throttle_std = outputs
+    elif len(outputs) == 2:
+        # Non-uncertainty model: (angle, throttle)
+        angle_pred, throttle_pred = outputs
+        # Set uncertainty to 0 for non-uncertainty models
+        angle_std = 0.0
+        throttle_std = 0.0
+        logger.warning("Model returned only 2 outputs (no uncertainty). Using std=0.0 for all predictions.")
+    else:
+        raise ValueError(f"Expected 2 or 4 outputs from model, got {len(outputs)}")
     
     # Convert tensors to floats if needed
     if isinstance(angle_pred, torch.Tensor):
@@ -161,9 +272,36 @@ def main():
     parser.add_argument('--output', type=str, default='validation_results', 
                        help='Output directory for results')
     parser.add_argument('--model-type', type=str, default='fastai_linear_unc',
-                       help='Type of model (e.g., fastai_linear_unc)')
+                       help='Type of model (e.g., fastai_linear_unc, fastai_mobilenet_unc, '
+                            'mobilenet_unc, fastai_mobilenet, fastai_linear). '
+                            'Non-uncertainty models set std=0 for all predictions.')
     parser.add_argument('--max-samples', type=int, default=None,
                        help='Maximum number of samples to evaluate (for testing)')
+    
+    # MobileNet-specific arguments
+    parser.add_argument('--mobilenet-pretrained', action='store_true', default=True,
+                       help='Use pretrained ImageNet weights (default: True)')
+    parser.add_argument('--no-mobilenet-pretrained', action='store_false', dest='mobilenet_pretrained',
+                       help='Do not use pretrained weights')
+    parser.add_argument('--mobilenet-freeze-backbone', action='store_true', default=False,
+                       help='Freeze MobileNet backbone during inference (default: False)')
+    parser.add_argument('--mobilenet-dropout', type=float, default=0.2,
+                       help='Dropout rate for MobileNet (default: 0.2)')
+    parser.add_argument('--mobilenet-loss-type', type=str, default='nll',
+                       choices=['nll', 'unc', 'simple'],
+                       help='Loss type used during training (default: nll)')
+    parser.add_argument('--mobilenet-use-imagenet-norm', action='store_true', default=True,
+                       help='Use ImageNet normalization (default: True)')
+    parser.add_argument('--no-mobilenet-imagenet-norm', action='store_false', dest='mobilenet_use_imagenet_norm',
+                       help='Do not use ImageNet normalization')
+    parser.add_argument('--mobilenet-auto-resize-224', action='store_true', default=True,
+                       help='Automatically resize inputs to 224x224 (default: True)')
+    parser.add_argument('--no-mobilenet-auto-resize', action='store_false', dest='mobilenet_auto_resize_224',
+                       help='Do not auto-resize to 224x224')
+    
+    # Multi-weather specific arguments
+    parser.add_argument('--n-weathers', type=int, default=3,
+                       help='Number of weather conditions for multi-weather models (default: 3)')
     
     args = parser.parse_args()
     
@@ -190,8 +328,28 @@ def main():
         val_indexes = val_indexes[:args.max_samples]
         logger.info(f"Limiting to {len(val_indexes)} samples")
     
+    # Prepare model kwargs based on model type
+    model_kwargs = {}
+    input_shape = (120, 160, 3)  # Default donkeycar input shape
+    
+    if 'mobilenet' in args.model_type.lower():
+        model_kwargs = {
+            'pretrained': args.mobilenet_pretrained,
+            'freeze_backbone': args.mobilenet_freeze_backbone,
+            'dropout': args.mobilenet_dropout,
+            'loss_type': args.mobilenet_loss_type,
+            'use_imagenet_normalization': args.mobilenet_use_imagenet_norm,
+            'auto_resize_224': args.mobilenet_auto_resize_224,
+        }
+        logger.info(f"Using MobileNet configuration: {model_kwargs}")
+    elif 'mw' in args.model_type.lower():
+        model_kwargs = {
+            'n_weathers': args.n_weathers,
+        }
+        logger.info(f"Using multi-weather configuration: {model_kwargs}")
+    
     # Load model
-    model = load_model(args.model, args.model_type)
+    model = load_model(args.model, args.model_type, input_shape=input_shape, **model_kwargs)
     
     # Load tub dataset
     logger.info(f"Loading tub from {args.tub}")
