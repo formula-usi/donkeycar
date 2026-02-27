@@ -13,6 +13,7 @@
     src="/static/js/jquery-ui.min.js"
     integrity=""
     crossorigin="anonymous"></script>
+  <script type="text/javascript" src="/static/js/nipple.js"></script>
   <link href="/static/styles/cockpit.css" rel="stylesheet">
 </head>
 
@@ -44,23 +45,6 @@
       <img alt="weather_icon" src="{{ current_surface_icon }}" />
       {{ current_surface }} </span>
     </div>
-
-    <div class="throttlebar-container"> 
-      <span class="digital">10%</span>
-      <div class="throttlebar-wrap">
-        <div class="throttlebar">
-          <span class="seg s1"></span>
-          <span class="seg s2"></span>
-          <span class="seg s3"></span>
-          <span class="seg s4"></span>
-          <span class="seg s5"></span>
-          <span class="seg s6"></span>
-          <span class="seg s7"></span>
-          <span class="seg s8"></span>
-          <span class="seg s9"></span>
-        </div>
-        </div>
-      </div>
   </div>
 
 
@@ -77,6 +61,7 @@
   window.serverState = {
     circuit: "{{ current_circuit if current_circuit else 'Default' }}",
     current_surface: "{{ current_surface if current_surface else 'Dry' }}",
-    weather_icon: "{{ current_surface_icon if current_surface_icon else '/static/images/cockpit/dry.svg' }}"
+    weather_icon: "{{ current_surface_icon if current_surface_icon else '/static/images/cockpit/dry.svg' }}",
+    throttle: "{{  current_ai_mul if current_ai_mul else '0' }}",
   };
 </script>

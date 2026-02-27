@@ -222,7 +222,7 @@ var driveHandler = new function() {
                         changed = true;
                     }
                 }
-                if(state["tele"]["user"].hasOwnProperty(key) && state["tele"]["user"][key] !== data[key]) {
+                if(state["tele"]?.["user"].hasOwnProperty(key) && state["tele"]["user"][key] !== data[key]) {
                     if(typeof state["tele"]["user"][key] === 'object') {
                         // recursively update the state's object field
                         changed = updateState(state["tele"]["user"][key], data[key]) && changed;
