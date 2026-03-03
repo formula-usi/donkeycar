@@ -48,6 +48,17 @@
   font-display: swap;
 }
 
+:root {
+  --color-accent: #1cffa8;
+  --color-accent-2: #2fd6ee;
+  --color-accent-3: #ff6ac8;
+  --color-bg: #201844;
+  --color-primary-2: #40318a;
+  --color-gauge-bg: #1a1a1a;
+
+  --color-grid: var(--color-accent);
+}
+
 * {
   font-weight: inherit;
   margin: 0;
@@ -58,19 +69,14 @@
 body {
   font-family: "Satoshi", sans-serif;
   font-weight: 700;
-  background: black;
+  background: var(--color-bg);
   overflow: hidden;
 }
 
 .content {
-  background:
-    radial-gradient(
-      ellipse at center,
-      #00000000 45%,
-      rgba(0, 0, 0, 0.45) 62%,
-      rgb(0 0 0) 74%
-    ),
-    url("/static/images/cockpit/background2.png");
+  background: linear-gradient(color-mix(in srgb, var(--color-bg) 30%, transparent), color-mix(in srgb, var(--color-bg) 43%, transparent)),
+  linear-gradient(to bottom, rgb(0 0 0) 0%, #00000000 18%, #00000000 86%, rgb(0 0 0) 96%),
+  url("/static/images/cockpit/background2.png");
   background-repeat: no-repeat;
   background-size: 100vw 100vh;
   height: 100vh;
@@ -98,14 +104,14 @@ body {
 
 .digital {
   font-weight: 100;
-  color: #1cffa8;
+  color: var(--color-accent);
   font-size: 2vh;
   letter-spacing: 0.2rem;
   text-transform: uppercase;
 }
 
 #circuit_display {
-  color: #2fd6ee;
+  color: var(--color-accent-2);
 }
 
 #circuit_image {
@@ -113,7 +119,6 @@ body {
     position: absolute;
     right: 4vw;
     top: 4vh;
-    opacity: 0.7;
 }
 
 #weather_display {
@@ -134,8 +139,8 @@ body {
   z-index: 0;
 
   background-image:
-    linear-gradient(to right, #d1d5db 1px, transparent 1px),
-    linear-gradient(to bottom, #d1d5db 1px, transparent 1px);
+    linear-gradient(to right, var(--color-grid) 0px, transparent 1px),
+    linear-gradient(to bottom, var(--color-grid) 0px, transparent 1px);
   background-size: 32px 32px;
 
   /* center transparent, outside visible */
@@ -157,106 +162,7 @@ body {
   left: 25vw;
   height: 60vh;
   width: 50vw;
-}
-
-.throttlebar-container {
-	position: absolute;
-	bottom: 10vh;
-	right: 15.5vw;
-	display: flex;
-    justify-content: center;
-    align-items: end;
-    gap: 0.3vw;
-}
-
-.throttlebar-wrap {
-	width: 2vw;
-}
-
-.throttlebar {
-  position: relative;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5vh;
-  /* spacing between segments */
-  border-radius: 12px;
-
-  /* subtle frame/backplate (optional) */
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.06),
-    rgba(0, 0, 0, 0.12)
-  );
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
-    inset 0 0 18px rgba(0, 0, 0, 0.55);
-  overflow: hidden;
-}
-
-.seg {
-  display: block;
-  height: 0.8vh;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.18);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 0 10px rgba(0, 0, 0, 0.35);
-  filter: saturate(1.05);
-}
-
-.s1 {
-  background: #d61515;
-}
-
-.s2 {
-  background: #e0371c;
-}
-
-.s3 {
-  background: #ea5a1f;
-}
-
-.s4 {
-  background: #f07b22;
-}
-
-.s5 {
-  background: #f3a21f;
-}
-
-.s6 {
-  background: #e8d31b;
-}
-
-.s7 {
-  background: #79d018;
-}
-
-.s8 {
-  background: #2fc022;
-}
-
-.s9 {
-  background: #11a83a;
-}
-
-.s1,
-.s2,
-.s3,
-.s4,
-.s5,
-.s6,
-.s7,
-.s8,
-.s9 {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 0 10px rgba(255, 255, 255, 0.05);
-}
-
-.bar[data-level] .seg {
-  opacity: 0.22;
+  filter: sepia(1) hue-rotate(199deg) opacity(0.7);
 }
 
 .speedometer_gauge {
@@ -265,7 +171,7 @@ body {
 	position: absolute;
 	bottom: 8vh;
 	left: 9.5vw;
-	background: #1a1a1a;
+	background: var(--color-gauge-bg);
 	border-radius: 100%;
 }
 
@@ -296,19 +202,18 @@ body {
   --analog-gauge-range: 250deg;
   --analog-gauge-bdw: 10cqi;
 
-  /* Futuristic palette */
-  --ag-bg0: light-dark(#0b0f16, #080b10);
-  --ag-panel: light-dark(#0f1622, #0b0f16);
-  --ag-metal0: light-dark(#2a323d, #cfd6de);
-  --ag-metal1: light-dark(#10151e, #8f98a4);
-  --ag-glow: #ff3b3b;
-  --ag-glow2: #ff9a3b;
+  --ag-bg0: var(--color-gauge-bg);
+  --ag-panel: var(--color-bg);
+  --ag-metal0: var(--color-primary-2);
+  --ag-metal1: var(--color-bg);
+  --ag-glow: var(--color-accent-2);
+  --ag-glow2: var(--color-accent-2);
 
   --analog-gauge-bg:
-    color-mix(in oklab, #22c55e 80%, #000 20%),
-    color-mix(in oklab, #fde047 85%, #000 15%),
-    color-mix(in oklab, #fb923c 85%, #000 15%),
-    color-mix(in oklab, #ef4444 90%, #000 10%) var(--analog-gauge-range),
+    color-mix(in oklab, var(--color-accent) 80%, #000 20%),
+    color-mix(in oklab, var(--color-accent) 85%, #000 15%),
+    color-mix(in oklab, var(--color-primary-2) 85%, #000 15%),
+    color-mix(in oklab, var(--color-bg) 90%, #000 10%) var(--analog-gauge-range),
     #0000 0 var(--analog-gauge-range);
 
   --analog-gauge-mask-circle:
@@ -324,8 +229,8 @@ body {
   );
 
   --analog-gauge-needle-bg: linear-gradient(180deg,
-    color-mix(in oklab, var(--ag-metal0), #000 35%),
-    color-mix(in oklab, var(--ag-metal1), #000 55%)
+    color-mix(in oklab, var(--ag-glow), #000 15%),
+    color-mix(in oklab, var(--ag-glow), #000 45%)
   );
   --analog-gauge-needle-h: 10cqi;
   --analog-gauge-value-mark-w: 6ch;
@@ -454,10 +359,10 @@ body {
   font-weight: 300;
   grid-area: 3 / 2 / 4 / 3;
   place-self: start center;
-  color: rgba(255,255,255,0.88);
+  color: var(--color-accent);
   text-shadow:
     0 0 14px rgba(255,255,255,0.10),
-    0 0 22px rgba(255,59,59,0.10);
+    0 0 22px color-mix(in oklab, var(--ag-glow), transparent 90%);
 }
 
 /* ===== NEEDLE ===== */
@@ -481,8 +386,8 @@ body {
     #000 2.7cqi
   );
   box-shadow:
-    0 0 18px rgba(255,59,59,0.18),
-    0 0 40px rgba(255,59,59,0.08),
+    0 0 18px color-mix(in oklab, var(--ag-glow), transparent 82%),
+    0 0 40px color-mix(in oklab, var(--ag-glow), transparent 92%),
     inset 0 0 0 1px rgba(255,255,255,0.10);
   filter: saturate(1.05);
 }
@@ -510,7 +415,7 @@ body {
   box-shadow:
     0 10px 18px rgba(0,0,0,0.45),
     inset 0 0 0 1px rgba(255,255,255,0.10),
-    inset 0 0 16px rgba(255,59,59,0.10);
+    inset 0 0 16px color-mix(in oklab, var(--ag-glow), transparent 90%);
 }
 
 /* ===== VALUE MARKS ===== */

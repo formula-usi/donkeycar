@@ -3,7 +3,6 @@
 // Cockpit Display
 // Read-only view: receives state from the server via WebSocket
 // and updates the gauge, steering wheel, and circuit info.
-// No driving controls live here.
 // ============================================================
 
 const state = {
