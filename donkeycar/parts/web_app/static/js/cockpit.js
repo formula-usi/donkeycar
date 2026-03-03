@@ -1,1465 +1,193 @@
 
- 
-  
-  function updateAiThrottleSlider(slider) {
-    // Update the display value
-    document.getElementById('ai_throttle_value').textContent = (slider.value / 100).toFixed(2);
-    
-    // Calculate the percentage for the gradient
-    const percentage = (slider.value - slider.min) / (slider.max - slider.min) * 100;
-    
-    // Update the background gradient (WebKit browsers)
-    slider.style.background = `linear-gradient(to right, #cc3333 0%, #cc3333 ${percentage}%, #ddd ${percentage}%, #ddd 100%)`;
-  }
-  
-  function updateThrottleControlsVisibility() {
-    const modeSelect = document.getElementById('mode_select');
-    const maxThrottleContainer = document.getElementById('max_throttle_container');
-    const aiThrottleContainer = document.getElementById('ai_throttle_container');
-    
-    if (modeSelect && maxThrottleContainer && aiThrottleContainer) {
-      const currentMode = modeSelect.value;
-      
-      // Max throttle visible for 'user' and 'local_angle' modes
-      if (currentMode === 'user' || currentMode === 'local_angle') {
-        maxThrottleContainer.style.display = 'inline-block';
-      } else {
-        maxThrottleContainer.style.display = 'none';
-      }
-      
-      // AI throttle multiplier visible only for 'local' mode (Full Auto)
-      if (currentMode === 'local') {
-        aiThrottleContainer.style.display = 'inline-block';
-      } else {
-        aiThrottleContainer.style.display = 'none';
-      }
+// ============================================================
+// Cockpit Display
+// Read-only view: receives state from the server via WebSocket
+// and updates the gauge, steering wheel, and circuit info.
+// No driving controls live here.
+// ============================================================
+
+const state = {
+    circuit: 'Default',
+    circuit_icon: '/static/images/default_circuit.png',
+    tele: {
+        user:  { angle: 0, throttle: 0 },
+        pilot: { angle: 0, throttle: 0 }
     }
-  }
-  
-document.addEventListener("DOMContentLoaded", function() {
-    console.log( "document ready!" );
-    driveHandler.load();
-    
-    // Initialize the AI throttle slider background
-    const aiSlider = document.getElementById('ai_throttle_range');
-    if (aiSlider) {
-      updateAiThrottleSlider(aiSlider);
-    }
-    
-    // Set up mode change listener for throttle controls visibility
-    const modeSelect = document.getElementById('mode_select');
-    if (modeSelect) {
-      modeSelect.addEventListener('change', updateThrottleControlsVisibility);
-      updateThrottleControlsVisibility(); // Initial visibility setup
-    }
-  });
+};
 
-var driveHandler = new function() {
-    //functions used to drive the vehicle. 
+// Seed circuit name from the server-rendered value if available.
+if (globalThis.serverState) {
+    if (globalThis.serverState.circuit !== undefined) state.circuit = globalThis.serverState.circuit;
+}
 
-    var state = {
-        'tele': {
-            "user": {
-                'angle': 0,
-                'throttle': 0,
-            },
-            "pilot": {
-                'angle': 0,
-                'throttle': 0,
-            }
-        },
-        'brakeOn': true,
-        'recording': false,
-        'driveMode': "user",
-        'pilot': 'None',
-        'session': 'None',
-        'lag': 0,
-        'controlMode': 'joystick',
-        'maxThrottle' : 1.0,
-        'throttleMode' : 'user',
-        'straightThrottle' : 1.0,  // For steer_limited mode: throttle when going straight
-        'steerThrottle' : 0.5,     // For steer_limited mode: throttle at full steering
-        'aiThrottleMul': 0.0,
-        'circuit': 'Default',
-        'surface': 'Dry',
-        'circuit_icon': '/static/images/default_circuit.png',
+// ============================================================
+// State & UI
+// ============================================================
 
-        'buttons': {
-            "w1": false,  // boolean; true is 'down' or pushed, false is 'up' or not pushed
-            "w2": false,
-            "w3": false,
-            "w4": false,
-            "w5": false,
-        },
-        'custom_values': {
-            'speed': 0,
-            'battery_voltage': 0,
-            'temperature': 0,
-            'status_message': ''
-        },
-        'text_content': ''
-    }
-
-    var joystick_options = {}
-    var joystickLoopRunning=false;
-
-    var hasGamepad = false;
-
-    var deviceHasOrientation=false;
-    var initialGamma;
-
-    var vehicle_id = ""
-    var driveURL = ""
-    var socket
-
-    this.load = function() {
-      // Initialize state with server-side values if available
-      if (window.serverState) {
-        if (window.serverState.circuit !== undefined) state.circuit = window.serverState.circuit;
-        if (window.serverState.surface !== undefined) state.surface = window.serverState.surface;
-        if (window.serverState.max_throttle !== undefined) state.maxThrottle = window.serverState.max_throttle;
-        if (window.serverState.throttle_mode !== undefined) state.throttleMode = window.serverState.throttle_mode;
-        if (window.serverState.straight_throttle !== undefined) state.straightThrottle = window.serverState.straight_throttle;
-        if (window.serverState.steer_throttle !== undefined) state.steerThrottle = window.serverState.steer_throttle;
-        if (window.serverState.circuit_icon !== undefined) state.circuit_icon = window.serverState.circuit_icon;
-   
-        // Update UI to reflect the initialized state
-        updateUI();
-      }
-      
-      // Initialize throttle controls visibility based on drive mode and throttle mode
-      if (state.driveMode === 'user') {
-        var currentThrottleMode = $('#throttle_mode_select').val() || state.throttleMode;
-        
-        // First hide both containers explicitly
-        $('#max_throttle_container').css('display', 'none');
-        $('#steer_limited_controls').css('display', 'none');
-        
-        // Then show the appropriate one
-        if (currentThrottleMode === 'steer_limited') {
-          $('#steer_limited_controls').css('display', 'inline-block');
-        } else {
-          $('#max_throttle_container').css('display', 'inline-block');
-        }
-      } else {
-        // In AI modes, hide all throttle controls
-        $('#max_throttle_container').css('display', 'none');
-        $('#steer_limited_controls').css('display', 'none');
-      }
-      
-      driveURL = '/drive'
-      socket = new WebSocket('ws://' + location.host + '/wsDrive');
-      
-      // Expose socket globally for custom extensions
-      window.donkeySocket = socket;
-      
-      socket.onopen = function() {
-        console.log('Cockpit WebSocket connected to /wsDrive');
-      };
-      
-      socket.onerror = function(error) {
-        console.error('Cockpit WebSocket error:', error);
-      };
-      
-      socket.onclose = function() {
-        console.log('Cockpit WebSocket closed');
-      };
-
-      setBindings()
-
-      joystick_element = document.getElementById('joystick_container');
-      joystick_options = {
-        zone: joystick_element,  // active zone
-        mode: 'dynamic',
-        size: 200,
-        color: '#668AED',
-        dynamicPage: true,
-        follow: true,
-      };
-
-      var manager = nipplejs.create(joystick_options);
-      bindNipple(manager)
-
-      if(!!navigator.getGamepads){
-        console.log("Device has gamepad support.")
-        hasGamepad = true;
-      }
-
-      if (window.DeviceOrientationEvent) {
-        window.addEventListener("deviceorientation", handleOrientation);
-        console.log("Browser supports device orientation.");
-        // Don't auto-switch to tilt mode - let user choose
-        // state.controlMode = 'tilt';
-        // deviceOrientationLoop();
-      } else {
-        console.log("Device Orientation not supported by browser, setting control mode to joystick.");
-        state.controlMode = 'joystick';
-      }
-    };
-
-    //
-    // Update a state object with the given data.
-    // This will only update existing fields in 
-    // the state; it will not add new fields that
-    // may exist in the data but not the state.
-    //
-    var updateState = function(state, data) {
-        let changed = false;
-        if(typeof data === 'object') {
-            const keys = Object.keys(data)
-            keys.forEach(key => {
-                //
-                // state must already have the key;
-                // we are not adding new fields to the state,
-                // we are only updating existing fields.
-                //
-                if(state.hasOwnProperty(key) && state[key] !== data[key]) {
-                    if(typeof state[key] === 'object') {
-                        // recursively update the state's object field
-                        changed = updateState(state[key], data[key]) || changed;
-                    } else {
-                        state[key] = data[key];
-                        changed = true;
-                    }
+// Update fields that already exist in the state object.
+// Also maps flat server keys (angle, throttle) into state.tele.user.
+function updateState(state, data) {
+    let changed = false;
+    if (typeof data === 'object') {
+        Object.keys(data).forEach(function(key) {
+            if (state.hasOwnProperty(key) && state[key] !== data[key]) {
+                if (typeof state[key] === 'object') {
+                    changed = updateState(state[key], data[key]) || changed;
+                } else {
+                    state[key] = data[key];
+                    changed = true;
                 }
-                if(state["tele"]?.["user"].hasOwnProperty(key) && state["tele"]["user"][key] !== data[key]) {
-                    if(typeof state["tele"]["user"][key] === 'object') {
-                        // recursively update the state's object field
-                        changed = updateState(state["tele"]["user"][key], data[key]) && changed;
-                    } else {
-                        state["tele"]["user"][key] = data[key];
-                        changed = true;
-                    }
-                }
-            });
-        }
-        return changed;
-    }
-
-    var setBindings = function() {
-      //
-      // when server sends a message with state changes
-      // then update our local state and 
-      // if there were any changes then redraw the UI.
-      //
-      socket.onmessage = function (event) {
-        const data = JSON.parse(event.data);
-        if(updateState(state, data)) {
-            updateUI();
-        }
-      };
-
-      $(document).keydown(function(e) {
-          if(e.which == 32) { toggleBrake() }  // 'space'  brake
-          if(e.which == 82) { toggleRecording() }  // 'r'  toggle recording
-          if(e.which == 73) { throttleUp() }  // 'i'  throttle up
-          if(e.which == 75) { throttleDown() } // 'k'  slow down
-          if(e.which == 74) { angleLeft() } // 'j' turn left
-          if(e.which == 76) { angleRight() } // 'l' turn right
-          if(e.which == 65) { updateDriveMode('local') } // 'a' turn on local mode (full _A_uto)
-          if(e.which == 85) { updateDriveMode('user') } // 'u' turn on manual mode (_U_user)
-          if(e.which == 83) { updateDriveMode('local_angle') } // 's' turn on local mode (auto _S_teering)
-          if(e.which == 77) { toggleDriveMode() } // 'm' toggle drive mode (_M_ode)
-      });
-
-      $('#mode_select').on('change', function () {
-        updateDriveMode($(this).val());
-      });
-
-      $('#max_throttle_range').on('input', function () {
-        state.maxThrottle = parseFloat($(this).val()) / 100.0;
-
-      });
-
-      $('#throttle_mode_select').on('change', function () {
-        state.throttleMode = $(this).val();
-        
-        // Only show/hide throttle controls if we're in user mode
-        if (state.driveMode === 'user') {
-          // First hide both containers explicitly
-          $('#max_throttle_container').css('display', 'none');
-          $('#steer_limited_controls').css('display', 'none');
-          
-          // Then show the appropriate one
-          if (state.throttleMode === 'steer_limited') {
-            $('#steer_limited_controls').css('display', 'inline-block');
-          } else {
-            $('#max_throttle_container').css('display', 'inline-block');
-          }
-        }
-        // If not in user mode, keep all throttle controls hidden
-      });
-
-      // Handlers for steer limited mode controls
-      $('#straight_throttle_range').on('input', function () {
-        state.straightThrottle = parseFloat($(this).val()) / 100.0;
-      });
-
-      $('#steer_throttle_range').on('input', function () {
-        state.steerThrottle = parseFloat($(this).val()) / 100.0;
-      });
-
-      $('#record_button').click(function () {
-        toggleRecording();
-      });
-
-      $('#brake_button').click(function() {
-        toggleBrake();
-      });
-
-      $('#ai_throttle_range').on('input', function() {
-        state.aiThrottleMul = ($(this).val() / 100).toFixed(2);
-        postDrive(['ai_throttle_update']);
-      });
-
-      $('input[type=radio][name=controlMode]').change(function() {
-        if (this.value == 'joystick') {
-          state.controlMode = "joystick";
-          joystickLoopRunning = true;
-          console.log('joystick mode');
-          joystickLoop();
-        } else {
-          joystickLoopRunning = false;
-        }
-
-        if (deviceHasOrientation && this.value == 'tilt') {
-          state.controlMode = "tilt";
-          console.log('tilt mode')
-        }
-
-        if (hasGamepad && this.value == 'gamepad') {
-          state.controlMode = "gamepad";
-          console.log('gamepad mode')
-          gamePadLoop();
-        }
-        updateUI();
-      });
-
-      // programmable buttons
-      $('#button_bar > button').mousedown(function() {
-        console.log(`${$(this).attr('id')} mousedown`);
-        state.buttons[$(this).attr('id')] = true;
-        postDrive(["buttons"]); // write it back to the server
-      });
-      $('#button_bar > button').mouseup(function() {
-        console.log(`${$(this).attr('id')} mouseup`);
-        state.buttons[$(this).attr('id')] = false;
-        postDrive(["buttons"]); // write it back to the server
-      });
-    };
-
-
-    // Store raw joystick values to allow recalculation when maxThrottle changes
-    var rawJoystickAngle = 0;
-    var rawJoystickThrottle = 0;
-
-    function bindNipple(manager) {
-      manager.on('start', function(evt, data) {
-        // Automatically switch to joystick mode when touched
-        state.controlMode = 'joystick';
-        updateUI(); // Update the UI to reflect the mode change
-        rawJoystickAngle = 0
-        rawJoystickThrottle = 0
-        state.tele.user.angle = 0
-        state.tele.user.throttle = 0
-        state.recording = true
-        joystickLoopRunning=true;
-        joystickLoop();
-
-      }).on('end', function(evt, data) {
-        joystickLoopRunning=false;
-        brake()
-
-      }).on('move', function(evt, data) {
-        state.brakeOn = false;
-        radian = data['angle']['radian']
-        distance = data['distance']
-
-        //console.log(data)
-        rawJoystickAngle = Math.max(Math.min(Math.cos(radian)/70*distance, 1), -1)
-        rawJoystickThrottle = Math.max(Math.min(Math.sin(radian)/70*distance , 1), -1)
-        
-        // Values will be applied in joystickLoop which calls postDrive
-        // This ensures maxThrottle changes take effect immediately
-
-      });
-    }
-
-    var updateUI = function() {
-
-      // console.log('New angle:', state.tele.user.angle, 'new throttle:', state.tele.user.throttle);
-
-
-      $("#throttleInput").val(state.tele.user.throttle);
-      $("#angleInput").val(state.tele.user.angle);
-      $('#mode_select').val(state.driveMode);
-      $('#circuit_display').text(state.circuit);
-      
-      // console.log('Cockpit updateUI - angle:', state.tele.user.angle, 'throttle:', state.tele.user.throttle);
-      
-      // Update circuit image
-      var circuitImageElement = $('#circuit_image');
-
-      // Check if we have blob data for the circuit icon
-      if (state.circuit_icon) {
-        circuitImageElement.attr('src', state.circuit_icon);
-        circuitImageElement.attr('alt', state.circuit + ' Circuit');
-        // Remove error handler since we're using blob data
-        circuitImageElement.off('error');
-      } 
-      
-      // Update surface display with icon
-      var surfaceElement = $('#surface_display');
-      // Determine which image to show
-      var imageSrc = '/static/images/weather/dry.svg'; // default
-
-      // Set color based on surface type
-      var surfaceColor = '#337ab7'; // default blue
-      if (state.surface.toLowerCase() === 'dry') {
-        surfaceColor = '#ff8c00'; // orange
-      } else if (state.surface.toLowerCase() === 'wet') {
-        surfaceColor = '#28a745'; // green
-      } else if (state.surface.toLowerCase() === 'icy') {
-        surfaceColor = '#87ceeb'; // light blue
-      }
-      surfaceElement.css('color', surfaceColor);
-
-      if (state.surface.toLowerCase() === 'dry') {
-        imageSrc = '/static/images/weather/dry.svg';
-      } else if (state.surface.toLowerCase() === 'wet') {
-        imageSrc = '/static/images/weather/wet.svg';
-      } else if (state.surface.toLowerCase() === 'icy') {
-        imageSrc = '/static/images/weather/icy.svg';
-      }
-      //surfaceElement.html(`<img src="${imageSrc}" alt="${state.surface}" title="${state.surface}" height="80">`);
-      var surfaceText = state.surface.toUpperCase(); // DRY / WET / ICY
-      surfaceElement.html(`
-        <img src="${imageSrc}" alt="${state.surface}" title="${state.surface}" height="80" style="vertical-align: middle; margin-right: 5px;">
-        <span style="font-weight: bold; font-size: 24px; color: ${surfaceColor}; vertical-align: middle;">${surfaceText}</span>
-      `);
-
-      var throttlePercent = Math.round(Math.abs(state.tele.user.throttle) * 100) + '%';
-      var steeringPercent = Math.round(Math.abs(state.tele.user.angle) * 100) + '%';
-      var throttleRounded = state.tele.user.throttle.toFixed(2)
-      var steeringRounded = state.tele.user.angle.toFixed(2)
-
-      $('#throttle_label').html(throttleRounded);
-      $('#steering_label').html(steeringRounded);
-
-      // Update steering wheel rotation
-      // state.tele.user.angle is -1 to 1, so multiply by degrees for rotation
-      var rotationDegrees = state.tele.user.angle * 180 / Math.PI; // -180 to +180 degrees
-      // console.log('Steering wheel rotation:', rotationDegrees, 'degrees (angle:', state.tele.user.angle, ')');
-      $('#steering_wheel').css('transform', 'rotate(' + rotationDegrees + 'deg)');
-
-      if(state.tele.user.throttle < 0) {
-        $('#throttle-bar-backward').css('width', throttlePercent).html(throttleRounded)
-        $('#throttle-bar-forward').css('width', '0%').html('')
-      }
-      else if (state.tele.user.throttle > 0) {
-        $('#throttle-bar-backward').css('width', '0%').html('')
-        $('#throttle-bar-forward').css('width', throttlePercent).html(throttleRounded)
-      }
-      else {
-        $('#throttle-bar-forward').css('width', '0%').html('')
-        $('#throttle-bar-backward').css('width', '0%').html('')
-      }
-
-      if(state.tele.user.angle < 0) {
-        $('#angle-bar-backward').css('width', steeringPercent).html(steeringRounded)
-        $('#angle-bar-forward').css('width', '0%').html('')
-      }
-      else if (state.tele.user.angle > 0) {
-        $('#angle-bar-backward').css('width', '0%').html('')
-        $('#angle-bar-forward').css('width', steeringPercent).html(steeringRounded)
-      }
-      else {
-        $('#angle-bar-forward').css('width', '0%').html('')
-        $('#angle-bar-backward').css('width', '0%').html('')
-      }
-
-      // Update speedometer
-      const gauge = document.getElementById('speedometer_gauge');
-
-      if (gauge) {
-        if (Math.abs(state.tele.user.throttle) > Math.abs(state.tele.pilot.throttle)) {
-          
-          const value = (Math.abs(state.tele.user.throttle) * 100).toFixed(0);
-          // console.log('Speedometer update (user):', value, '% (throttle:', state.tele.user.throttle, ')');
-          $('#speedometer_score').html(value);
-          gauge.setAttribute('value', value);
-        
-        } else {
-          
-          const value = (Math.abs(state.tele.pilot.throttle) * 100).toFixed(0);
-          // console.log('Speedometer update (pilot):', value, '% (throttle:', state.tele.pilot.throttle, ')');
-          $('#speedometer_score').html(value);
-          gauge.setAttribute('value', value);
-        
-        }
-      }
-
-      if (state.recording) {
-        $('#record_button')
-          .html('Stop Recording (r)')
-          .removeClass('btn-info')
-          .addClass('btn-warning').end()
-      } else {
-        $('#record_button')
-          .html('Start Recording (r)')
-          .removeClass('btn-warning')
-          .addClass('btn-info').end()
-      }
-
-      if (state.brakeOn) {
-        $('#brake_button')
-          .html('Start Vehicle')
-          .removeClass('btn-danger')
-          .addClass('btn-success').end()
-      } else {
-        $('#brake_button')
-          .html('Stop Vehicle')
-          .removeClass('btn-success')
-          .addClass('btn-danger').end()
-      }
-
-      if(deviceHasOrientation) {
-        $('#tilt-toggle').removeAttr("disabled")
-        $('#tilt').removeAttr("disabled")
-      } else {
-        $('#tilt-toggle').attr("disabled", "disabled");
-        $('#tilt').prop("disabled", true);
-      }
-
-      if(hasGamepad) {
-        $('#gamepad-toggle').removeAttr("disabled")
-        $('#gamepad').removeAttr("disabled")
-      } else {
-        $('#gamepad-toggle').attr("disabled", "disabled");
-        $('#gamepad').prop("disabled", true);
-      }
-
-      if (state.controlMode == "joystick") {
-        $('#joystick_outer').show();
-        $('#joystick-toggle').addClass("active");
-        $('#joystick').attr("checked", "checked")
-      } else {
-        $('#joystick_outer').hide();
-        $('#joystick-toggle').removeClass("active");
-        $('#joystick').removeAttr("checked");
-      }
-
-      if (state.controlMode == "tilt") {
-        $('#tilt-toggle').addClass("active");
-        $('#tilt').attr("checked", "checked");
-      } else {
-        $('#tilt-toggle').removeClass("active");
-        $('#tilt').removeAttr("checked")
-      }
-
-      //drawLine(state.tele.user.angle, state.tele.user.throttle)
-      
-      // Update custom text display
-      if (state.text_content !== undefined) {
-        const textDisplay = document.getElementById('custom_text_display');
-        if (textDisplay) {
-          textDisplay.value = state.text_content;
-          textDisplay.style.color = state.text_content ? '#333' : '#999';
-        }
-      }
-      
-      // Update custom values display
-      if (state.custom_values !== undefined) {
-        // Update speed display
-        if (state.custom_values.speed !== undefined) {
-          const speedDisplay = document.getElementById('speed_display');
-          if (speedDisplay) {
-            speedDisplay.textContent = state.custom_values.speed.toFixed(1);
-          }
-        }
-        
-        // Update battery display with color coding
-        if (state.custom_values.battery_voltage !== undefined) {
-          const batteryDisplay = document.getElementById('battery_display');
-          if (batteryDisplay) {
-            const voltage = state.custom_values.battery_voltage;
-            batteryDisplay.textContent = voltage.toFixed(1) + 'V';
-            
-            // Color coding for battery level
-            if (voltage > 12.0) {
-              batteryDisplay.style.color = '#5cb85c'; // Green - good
-            } else if (voltage > 11.0) {
-              batteryDisplay.style.color = '#f0ad4e'; // Orange - warning
-            } else {
-              batteryDisplay.style.color = '#d9534f'; // Red - low
             }
-          }
-        }
-      }
-    };
-
-    const ALL_POST_FIELDS = ['angle', 'throttle', 'drive_mode', 'recording', 'buttons', 'max_throttle', 'throttle_mode', 'straight_throttle', 'steer_throttle'];
-
-    //
-    // Set any changed properties to the server
-    // via the websocket connection
-    //
-    var postDrive = function(fields=[]) {
-
-        if(fields.length === 0) {
-            fields = ALL_POST_FIELDS;
-        }
-        // console.log(state.tele.user.throttle);
-        let data = {}
-        fields.forEach(field => {
-            switch (field) {
-                case 'angle': data['angle'] = state.tele.user.angle; break;
-                case 'throttle': data['throttle'] = state.tele.user.throttle; break;
-                case 'drive_mode': data['drive_mode'] = state.driveMode; break;
-                case 'recording': data['recording'] = state.recording; break;
-                case 'buttons': data['buttons'] = state.buttons; break;
-                case 'ai_throttle_update': data['ai_throttle_update'] = state.aiThrottleMul; break;
-                case 'circuit': data['circuit'] = state.circuit; break;
-                case 'surface': data['surface'] = state.surface; break;
-                case 'max_throttle': data['max_throttle'] = state.maxThrottle; break;
-                case 'throttle_mode': data['throttle_mode'] = state.throttleMode; break;
-                case 'straight_throttle': data['straight_throttle'] = state.straightThrottle; break;
-                case 'steer_throttle': data['steer_throttle'] = state.steerThrottle; break;
-                case 'circuit_icon': data['circuit_icon'] = state.circuit_icon; break;
-                default: console.log(`Unexpected post field: '${field}'`); break;
+            if (state.tele?.user.hasOwnProperty(key) && state.tele.user[key] !== data[key]) {
+                if (typeof state.tele.user[key] === 'object') {
+                    changed = updateState(state.tele.user[key], data[key]) && changed;
+                } else {
+                    state.tele.user[key] = data[key];
+                    changed = true;
+                }
             }
         });
-        if(data) {
-            let json_data = JSON.stringify(data);
-            // console.log(`Posting ${json_data}`);
-            // socket.send(json_data)
-            updateUI()
-        }
-    };
-
-    var applyDeadzone = function(number, threshold){
-       percentage = (Math.abs(number) - threshold) / (1 - threshold);
-
-       if(percentage < 0)
-          percentage = 0;
-
-       return percentage * (number > 0 ? 1 : -1);
     }
-
-
-
-    function gamePadLoop() {
-      setTimeout(gamePadLoop,100);
-
-      if (state.controlMode != "gamepad") {
-        return;
-      }
-
-      var gamepads = navigator.getGamepads();
-
-      for (var i = 0; i < gamepads.length; ++i)
-        {
-          var pad = gamepads[i];
-          // some pads are NULL I think.. some aren't.. use one that isn't null
-          if (pad && pad.timestamp!=0)
-          {
-
-            var joystickX = applyDeadzone(pad.axes[2], 0.05);
-
-            var joystickY = applyDeadzone(pad.axes[1], 0.15);
-
-            state.tele.user.angle = joystickX;
-            state.tele.user.throttle = limitedThrottle((joystickY * -1));
-
-            if (state.tele.user.throttle == 0 && state.tele.user.throttle == 0) {
-              state.brakeOn = true;
-            } else {
-              state.brakeOn = false;
-            }
-
-            if (state.tele.user.throttle != 0) {
-              state.recording = true;
-            } else {
-              state.recording = false;
-            }
-
-            postDrive()
-
-          }
-            // todo; simple demo of displaying pad.axes and pad.buttons
-        }
-      }
-
-
-    // Send control updates to the server every .1 seconds.
-    function joystickLoop () {
-      //  console.log(`joystickLoop CALLED - loopRunning: ${joystickLoopRunning}, controlMode: ${state.controlMode}`);
-       setTimeout(function () {
-            console.log(`joystickLoop TIMEOUT FIRED`);
-            // Recalculate throttle with current maxThrottle to handle real-time changes
-            state.tele.user.throttle = limitedThrottle(rawJoystickThrottle)
-            state.tele.user.angle = rawJoystickAngle
-            
-            // Reset angle if throttle is too small
-            if (state.tele.user.throttle < .001) {
-              state.tele.user.angle = 0
-            }
-            // console.log(`${state.maxThrottle}`)
-            // console.log(`JoystickLoop - raw: ${rawJoystickThrottle.toFixed(2)}, maxThrottle: ${state.maxThrottle.toFixed(2)}, limited: ${state.tele.user.throttle.toFixed(2)}`)
-            
-            postDrive()
-
-          if (joystickLoopRunning && state.controlMode == "joystick") {
-             joystickLoop();
-          }
-       }, 100)
-    }
-
-    // Control throttle and steering with device orientation
-    function handleOrientation(event) {
-
-      var alpha = event.alpha;
-      var beta = event.beta;
-      var gamma = event.gamma;
-
-      if (beta == null || gamma == null) {
-        deviceHasOrientation = false;
-        state.controlMode = "joystick";
-        console.log("Invalid device orientation values, switched to joystick mode.")
-      } else {
-        deviceHasOrientation = true;
-        console.log("device has valid orientation values")
-      }
-
-      updateUI();
-
-      if(state.controlMode != "tilt" || !deviceHasOrientation || state.brakeOn){
-        return;
-      }
-
-      if(!initialGamma && gamma) {
-        initialGamma = gamma;
-      }
-
-      var newThrottle = gammaToThrottle(gamma);
-      var newAngle = betaToSteering(beta, gamma);
-
-      // prevent unexpected switch between full forward and full reverse
-      // when device is parallel to ground
-      if (state.tele.user.throttle > 0.9 && newThrottle <= 0) {
-        newThrottle = 1.0
-      }
-
-      if (state.tele.user.throttle < -0.9 && newThrottle >= 0) {
-        newThrottle = -1.0
-      }
-
-      state.tele.user.throttle = limitedThrottle(newThrottle);
-      state.tele.user.angle = newAngle;
-    }
-
-    function deviceOrientationLoop () {
-       setTimeout(function () {
-          if(!state.brakeOn){
-            postDrive()
-          }
-
-          if (state.controlMode == "tilt") {
-            deviceOrientationLoop();
-          }
-       }, 100)
-    }
-
-    var throttleUp = function(){
-      state.tele.user.throttle = limitedThrottle(Math.min(state.tele.user.throttle + .05, 1));
-      postDrive()
-    };
-
-    var throttleDown = function(){
-      state.tele.user.throttle = limitedThrottle(Math.max(state.tele.user.throttle - .05, -1));
-      postDrive()
-    };
-
-    var angleLeft = function(){
-      state.tele.user.angle = Math.max(state.tele.user.angle - .1, -1)
-      postDrive()
-    };
-
-    var angleRight = function(){
-      state.tele.user.angle = Math.min(state.tele.user.angle + .1, 1)
-      postDrive()
-    };
-
-    var updateDriveMode = function(mode){
-      state.driveMode = mode;
-      
-      // Handle throttle control visibility based on drive mode
-      if (mode === 'user') {
-        // In user mode, show throttle controls based on the current throttle mode selection
-        var currentThrottleMode = $('#throttle_mode_select').val();
-        
-        // First hide both containers explicitly
-        $('#max_throttle_container').css('display', 'none');
-        $('#steer_limited_controls').css('display', 'none');
-        
-        // Then show the appropriate one
-        if (currentThrottleMode === 'steer_limited') {
-          $('#steer_limited_controls').css('display', 'inline-block');
-        } else {
-          $('#max_throttle_container').css('display', 'inline-block');
-        }
-      } else {
-        // In AI modes (local, local_angle), hide all throttle controls
-        $('#max_throttle_container').css('display', 'none');
-        $('#steer_limited_controls').css('display', 'none');
-      }
-      
-      postDrive(["drive_mode"])
-    };
-
-    var toggleDriveMode = function() {
-      switch(state.driveMode) {
-        case "user": {
-            updateDriveMode("local_angle");
-            break;
-        }
-        case "local_angle": {
-            updateDriveMode("local");
-            break;
-        }
-        default: {
-            updateDriveMode("user");
-            break;
-        }
-      }
-    }
-
-    var toggleRecording = function(){
-      state.recording = !state.recording
-      postDrive(['recording']);
-    };
-
-    var toggleBrake = function(){
-      state.brakeOn = !state.brakeOn;
-      initialGamma = null;
-
-      if (state.brakeOn) {
-        brake();
-      }
-    };
-
-    var brake = function(i){
-          console.log('post drive: ' + i)
-          state.tele.user.angle = 0
-          state.tele.user.throttle = 0
-          state.recording = false
-          state.driveMode = 'user';
-          postDrive()
-
-      i++
-      if (i < 5) {
-        setTimeout(function () {
-          console.log('calling brake:' + i)
-          brake(i);
-        }, 500)
-      };
-
-      state.brakeOn = true;
-      updateUI();
-    };
-
-    var limitedThrottle = function(newThrottle){
-      var limitedThrottle = 0;
-
-      if (newThrottle > 0) {
-        limitedThrottle = Math.min(state.maxThrottle, newThrottle);
-      }
-
-      if (newThrottle < 0) {
-        limitedThrottle = Math.max((state.maxThrottle * -1), newThrottle);
-      }
-
-      if (state.throttleMode == 'constant') {
-        limitedThrottle = state.maxThrottle;
-      }
-      
-      if (state.throttleMode == 'steer_limited') {
-        // Interpolate between straight throttle and full steer throttle based on steering angle
-        // When steering is 0, use straightThrottle
-        // When steering is at maximum (1.0), use steerThrottle
-        var steerAmount = Math.abs(state.tele.user.angle); // 0 to 1
-        var maxAllowedThrottle = state.straightThrottle + 
-                                (state.steerThrottle - state.straightThrottle) * steerAmount;
-        
-        if (newThrottle > 0) {
-          limitedThrottle = Math.min(maxAllowedThrottle, newThrottle);
-        } else if (newThrottle < 0) {
-          limitedThrottle = Math.max(-maxAllowedThrottle, newThrottle);
-        }
-      }
-
-      return limitedThrottle;
-    }
-
-
-    // var drawLine = function(angle, throttle) {
-    //
-    //   throttleConstant = 100
-    //   throttle = throttle * throttleConstant
-    //   angleSign = Math.sign(angle)
-    //   angle = toRadians(Math.abs(angle*90))
-    //
-    //   var canvas = document.getElementById("angleView"),
-    //   context = canvas.getContext('2d');
-    //   context.clearRect(0, 0, canvas.width, canvas.height);
-    //
-    //   base={'x':canvas.width/2, 'y':canvas.height}
-    //
-    //   pointX = Math.sin(angle) * throttle * angleSign
-    //   pointY = Math.cos(angle) * throttle
-    //   xPoint = {'x': pointX + base.x, 'y': base.y - pointY}
-    //
-    //   context.beginPath();
-    //   context.moveTo(base.x, base.y);
-    //   context.lineTo(xPoint.x, xPoint.y);
-    //   context.lineWidth = 5;
-    //   context.strokeStyle = '#ff0000';
-    //   context.stroke();
-    //   context.closePath();
-    //
-    // };
-
-    var betaToSteering = function(beta, gamma) {
-      const deadZone = 5;
-      var angle = 0.0;
-      var outsideDeadZone = false;
-      var controlDirection = (Math.sign(initialGamma) * -1)
-
-      //max steering angle at device 35º tilt
-      var fullLeft = -35.0;
-      var fullRight = 35.0;
-
-      //handle beta 90 to 180 discontinuous transition at gamma 90
-      if (beta > 90) {
-        beta = (beta - 180) * Math.sign(gamma * -1) * controlDirection
-      } else if (beta < -90) {
-        beta = (beta + 180) * Math.sign(gamma * -1) * controlDirection
-      }
-
-      // set the deadzone for neutral sterring
-      if (Math.abs(beta) > 90) {
-        outsideDeadZone = Math.abs(beta) < 180 - deadZone;
-      }
-      else {
-        outsideDeadZone = Math.abs(beta) > deadZone;
-      }
-
-      if (outsideDeadZone && beta < -90.0) {
-        angle = remap(beta, fullLeft, (-180.0 + deadZone), -1.0, 0.0);
-      }
-      else if (outsideDeadZone && beta > 90.0) {
-        angle = remap(beta, (180.0 - deadZone), fullRight, 0.0, 1.0);
-      }
-      else if (outsideDeadZone && beta < 0.0) {
-        angle = remap(beta, fullLeft, 0.0 - deadZone, -1.0, 0);
-      }
-      else if (outsideDeadZone && beta > 0.0) {
-        angle = remap(beta, 0.0 + deadZone, fullRight, 0.0, 1.0);
-      }
-
-      // set full turn if abs(angle) > 1
-      if (angle < -1) {
-        angle = -1;
-      } else if (angle > 1) {
-        angle = 1;
-      }
-
-      return angle * controlDirection;
-    };
-
-    var gammaToThrottle = function(gamma) {
-      var throttle = 0.0;
-      var gamma180 = gamma + 90;
-      var initialGamma180 = initialGamma + 90;
-      var controlDirection = (Math.sign(initialGamma) * -1);
-
-      // 10 degree deadzone around the initial position
-      // 45 degrees of motion for forward and reverse
-      var minForward = Math.min((initialGamma180 + (5 * controlDirection)), (initialGamma180 + (50 * controlDirection)));
-      var maxForward = Math.max((initialGamma180 + (5 * controlDirection)), (initialGamma180 + (50 * controlDirection)));
-      var minReverse = Math.min((initialGamma180 - (50 * controlDirection)), (initialGamma180 - (5 * controlDirection)));
-      var maxReverse = Math.max((initialGamma180 - (50 * controlDirection)), (initialGamma180 - (5 * controlDirection)));
-
-      //constrain control input ranges to 0..180 continuous range
-      minForward = Math.max(minForward, 0);
-      maxForward = Math.min(maxForward, 180);
-      minReverse = Math.max(minReverse, 0);
-      maxReverse = Math.min(maxReverse, 180);
-
-      if(gamma180 > minForward && gamma180 < maxForward) {
-        // gamma in forward range
-        if (controlDirection == -1) {
-          throttle = remap(gamma180, minForward, maxForward, 1.0, 0.0);
-        } else {
-          throttle = remap(gamma180, minForward, maxForward, 0.0, 1.0);
-        }
-      } else if (gamma180 > minReverse && gamma180 < maxReverse) {
-        // gamma in reverse range
-        if (controlDirection == -1) {
-          throttle = remap(gamma180, minReverse, maxReverse, 0.0, -1.0);
-        } else  {
-          throttle = remap(gamma180, minReverse, maxReverse, -1.0, 0.0);
-        }
-      }
-
-      return throttle;
-    };
-
-}();
-
-
-function toRadians (angle) {
-  return angle * (Math.PI / 180);
+    return changed;
 }
 
-function remap( x, oMin, oMax, nMin, nMax ){
-  //range check
-  if (oMin == oMax){
-      console.log("Warning: Zero input range");
-      return None;
-  };
+function updateUI() {
+    // Circuit name
+    document.getElementById('circuit_display').textContent = state.circuit;
 
-  if (nMin == nMax){
-      console.log("Warning: Zero output range");
-      return None
-  }
+    // Circuit minimap
+    const circuitImage = document.getElementById('circuit_image');
+    if (state.circuit_icon) {
+        circuitImage.src = state.circuit_icon;
+        circuitImage.alt = state.circuit + ' Circuit';
+    }
 
-  //check reversed input range
-  var reverseInput = false;
-  oldMin = Math.min( oMin, oMax );
-  oldMax = Math.max( oMin, oMax );
-  if (oldMin != oMin){
-      reverseInput = true;
-  }
+    // Steering wheel rotation (angle is -1..1)
+    const rotationDegrees = state.tele.user.angle * 180 / Math.PI;
+    document.getElementById('steering_wheel').style.transform = 'rotate(' + rotationDegrees + 'deg)';
 
-  //check reversed output range
-  var reverseOutput = false;
-  newMin = Math.min( nMin, nMax )
-  newMax = Math.max( nMin, nMax )
-  if (newMin != nMin){
-      reverseOutput = true;
-  };
-
-  var portion = (x-oldMin)*(newMax-newMin)/(oldMax-oldMin)
-  if (reverseInput){
-      portion = (oldMax-x)*(newMax-newMin)/(oldMax-oldMin);
-  };
-
-  var result = portion + newMin
-  if (reverseOutput){
-      result = newMax - portion;
-  }
-
-return result;
+    // Speedometer — show whichever throttle (user or pilot) is larger
+    const gauge = document.getElementById('speedometer_gauge');
+    if (gauge) {
+        const throttle = Math.abs(state.tele.user.throttle) >= Math.abs(state.tele.pilot.throttle)
+            ? state.tele.user.throttle
+            : state.tele.pilot.throttle;
+        gauge.setAttribute('value', (Math.abs(throttle) * 100).toFixed(0));
+    }
 }
 
-// Define the AnalogGauge web component (Speedometer)
-const styles = new CSSStyleSheet();
-styles.replaceSync(`
-  :host {
-    --analog-gauge-segments: 1;
-    --analog-gauge-segments-w: 1deg;
-    --analog-gauge-start-angle: 235deg;
-    --analog-gauge-range: 250deg;
-    --analog-gauge-bdw: 10cqi;
+// ============================================================
+// WebSocket
+// ============================================================
 
-    /* Futuristic palette */
-    --ag-bg0: light-dark(#0b0f16, #080b10);
-    --ag-panel: light-dark(#0f1622, #0b0f16);
-    --ag-metal0: light-dark(#2a323d, #cfd6de);
-    --ag-metal1: light-dark(#10151e, #8f98a4);
-    --ag-glow: #ff3b3b;
-    --ag-glow2: #ff9a3b;
+document.addEventListener('DOMContentLoaded', function() {
+    const socket = new WebSocket('ws://' + location.host + '/wsDrive');
+    globalThis.donkeySocket = socket;
 
-    --analog-gauge-bg:
-      color-mix(in oklab, #22c55e 80%, #000 20%),
-      color-mix(in oklab, #fde047 85%, #000 15%),
-      color-mix(in oklab, #fb923c 85%, #000 15%),
-      color-mix(in oklab, #ef4444 90%, #000 10%) var(--analog-gauge-range),
-      #0000 0 var(--analog-gauge-range);
+    socket.onopen  = function()  { console.log('Cockpit WebSocket connected'); };
+    socket.onerror = function(e) { console.error('Cockpit WebSocket error:', e); };
+    socket.onclose = function()  { console.log('Cockpit WebSocket closed'); };
 
-    --analog-gauge-mask-circle:
-      radial-gradient(circle at 50% 50%,
-        #0000 calc(50cqi - var(--analog-gauge-bdw, 10cqi)),
-        #000 0
-      );
+    socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        if (updateState(state, data)) {
+            updateUI();
+        }
+    };
 
-    --analog-gauge-mask-segment: repeating-conic-gradient(
-      from var(--analog-gauge-start-angle, 235deg) at 50% 50%,
-      #000 0 var(--analog-gauge-segments-w, 1deg),
-      #0000 0 calc((var(--analog-gauge-range, 250deg) / var(--analog-gauge-segments, 5)))
-    );
+    updateUI();
+});
 
-    --analog-gauge-needle-bg: linear-gradient(180deg,
-      color-mix(in oklab, var(--ag-metal0), #000 35%),
-      color-mix(in oklab, var(--ag-metal1), #000 55%)
-    );
-    --analog-gauge-needle-h: 10cqi;
-    --analog-gauge-value-mark-w: 6ch;
-
-    --_w: calc(100cqi/3*2);
-    --_vw: calc(100cqi - (2 * var(--analog-gauge-bdw, 10cqi)));
-    --_m: calc(100cqi/6);
-
-    aspect-ratio: 1;
-    container-type: inline-size;
-
-    letter-spacing: 0.02em;
-
-    display: grid;
-    grid-template: repeat(3, 1fr) / repeat(3, 1fr);
-    inline-size: 100%;
-    position: relative;
-    isolation: isolate;
-  }
-
-  /* ===== NEW: BEZEL (metal ring + depth) ===== */
-  :host::part(bezel) {
-    grid-area: 1 / 1 / 4 / 4;
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 50% 40%,
-        rgba(255,255,255,0.10),
-        rgba(255,255,255,0.02) 35%,
-        rgba(0,0,0,0.35) 70%,
-        rgba(0,0,0,0.75) 100%
-      ),
-      conic-gradient(from 210deg,
-        rgba(255,255,255,0.10),
-        rgba(0,0,0,0.25),
-        rgba(255,255,255,0.08),
-        rgba(0,0,0,0.35),
-        rgba(255,255,255,0.12)
-      );
-    box-shadow:
-      0 18px 35px rgba(0,0,0,0.55),
-      inset 0 0 0 1px rgba(255,255,255,0.10),
-      inset 0 0 22px rgba(0,0,0,0.55);
-  }
-
-  /* ===== GAUGE RING ===== */
-  :host::part(gauge) {
-    grid-area: 1 / 1 / 4 / 4;
-    border-radius: 50%;
-
-    /* ring + subtle bloom + inner tech texture */
-    background:
-      radial-gradient(circle at 50% 50%,
-        rgba(0,0,0,0.0) 0,
-        rgba(0,0,0,0.0) 55%,
-        rgba(255,255,255,0.06) 56%,
-        rgba(0,0,0,0.0) 62%
-      ),
-      conic-gradient(from var(--analog-gauge-start-angle, 235deg), var(--analog-gauge-bg));
-
-    mask: var(--analog-gauge-mask-circle), var(--analog-gauge-mask-segment, none);
-    mask-composite: var(--analog-gauge-mask-composite, subtract);
-
-    box-shadow:
-      inset 0 0 0 1px rgba(255,255,255,0.06),
-      inset 0 -18px 32px rgba(0,0,0,0.50);
-    filter: saturate(1.05) contrast(1.05);
-
-    filter: saturate(1.05) contrast(1.05)
-  drop-shadow(0 0 18px color-mix(in oklab, var(--ag-glow), transparent 65%));
-      opacity: 0.7;
-  }
-
-  :host::part(ticks) {
-  grid-area: 1 / 1 / 4 / 4;
-  place-self: center;
-  width: var(--_vw);
-  aspect-ratio: 1;
-  border-radius: 50%;
-
-  background:
-    repeating-conic-gradient(
-      from calc(var(--analog-gauge-start-angle,235deg) - 5deg),
-      rgba(255,255,255,0.20) 0 0.25deg,
-      rgba(255,255,255,0.0) 0.25deg 3.2deg
-    ),
-    repeating-conic-gradient(
-      from calc(var(--analog-gauge-start-angle,235deg) - 5deg),
-      rgba(255,255,255,0.30) 0 0.55deg,
-      rgba(255,255,255,0.0) 0.55deg 16deg
-    );
-
-  /* 1) your adjusted ring mask */
-  --_ring-mask: radial-gradient(
-    circle at 50% 50%,
-    #0000 0 calc(70% - 12cqi),
-    #000 0 calc(80% - 8cqi),
-    #0000 0
-  );
-
-  /* 2) angle/sweep mask: only allow ticks inside the gauge sweep */
-  --_sweep-mask: conic-gradient(
-    from var(--analog-gauge-start-angle, 235deg),
-    #000 0 var(--analog-gauge-range, 250deg),
-    #0000 0 360deg
-  );
-
-  /* apply BOTH masks */
-  -webkit-mask: var(--_ring-mask), var(--_sweep-mask);
-          mask: var(--_ring-mask), var(--_sweep-mask);
-
-  /* intersect the two masks */
-  -webkit-mask-composite: source-in; /* WebKit */
-          mask-composite: intersect;  /* Spec */
-
-  filter: drop-shadow(0 0 6px rgba(255,255,255,0.06));
-}
-
-  /* ===== LABELS ===== */
-  :host::part(label) {
-    font-size: 7.2cqi;
-    font-weight: 350;
-    grid-area: 3 / 2 / 4 / 3;
-    line-height: 1.15;
-    place-self: center;
-    text-align: center;
-    text-transform: uppercase;
-    color: light-dark(rgba(255,255,255,0.65), rgba(255,255,255,0.75));
-    text-shadow: 0 0 10px rgba(255,255,255,0.08);
-  }
-
-  :host::part(label-min),
-  :host::part(label-max) {
-    font-size: 4.8cqi;
-    font-weight: 500;
-    place-self: center;
-    color: light-dark(rgba(255,255,255,0.45), rgba(255,255,255,0.60));
-  }
-  :host::part(label-min) { grid-area: 3 / 1 / 4 / 2; }
-  :host::part(label-max) { grid-area: 3 / 3 / 4 / 4; }
-
-  :host::part(value) {
-    font-size: 14.5cqi;
-    font-weight: 300;
-    grid-area: 3 / 2 / 4 / 3;
-    place-self: start center;
-    color: rgba(255,255,255,0.88);
-    text-shadow:
-      0 0 14px rgba(255,255,255,0.10),
-      0 0 22px rgba(255,59,59,0.10);
-  }
-
-  /* ===== NEEDLE ===== */
-  :host::part(needle) {
-    grid-area: 2 / 1 / 3 / 3;
-    place-self: center start;
-
-    height: var(--analog-gauge-needle-h);
-    width: var(--_w);
-    rotate: var(--_d, 0deg);
-    transform-origin: calc(100% - var(--_m)) 50%;
-
-    /* metal + emissive edge */
-    background:
-      linear-gradient(180deg,
-        rgba(255,255,255,0.22),
-        rgba(255,255,255,0.02) 35%,
-        rgba(0,0,0,0.35) 100%
-      ),
-      var(--analog-gauge-needle-bg);
-
-    clip-path: polygon(6% 50%, 76% 2%, 84% 35%, 84% 65%, 76% 98%);
-
-    /* pivot hole */
-    mask: radial-gradient(circle at calc(100% - var(--_m)) 50%,
-      #0000 0 2.6cqi,
-      #000 2.7cqi
-    );
-
-    box-shadow:
-      0 0 18px rgba(255,59,59,0.18),
-      0 0 40px rgba(255,59,59,0.08),
-      inset 0 0 0 1px rgba(255,255,255,0.10);
-
-    filter: saturate(1.05);
-  }
-
-  /* ===== NEW: HUB (pivot cap) ===== */
-  :host::part(hub) {
-    grid-area: 2 / 2 / 3 / 3;
-    place-self: center;
-    width: 16cqi;
-    aspect-ratio: 1;
-    border-radius: 999px;
-    background:
-      radial-gradient(circle at 35% 30%,
-        rgba(255,255,255,0.18),
-        rgba(255,255,255,0.04) 35%,
-        rgba(0,0,0,0.55) 70%,
-        rgba(0,0,0,0.85) 100%
-      ),
-      conic-gradient(from 200deg,
-        rgba(255,255,255,0.18),
-        rgba(0,0,0,0.55),
-        rgba(255,255,255,0.10),
-        rgba(0,0,0,0.55)
-      );
-    box-shadow:
-      0 10px 18px rgba(0,0,0,0.45),
-      inset 0 0 0 1px rgba(255,255,255,0.10),
-      inset 0 0 16px rgba(255,59,59,0.10);
-  }
-
-  /* ===== VALUE MARKS ===== */
-  :host::part(value-marks) {
-    all: unset;
-    grid-area: 1 / 1 / 4 / 4;
-    place-self: center;
-    width: var(--_vw);
-    aspect-ratio: 1;
-    border-radius: 50%;
-    list-style: none;
-    position: relative;
-    color: rgba(255,255,255,0.55);
-    text-shadow: 0 0 10px rgba(0,0,0,0.65);
-  }
-
-  :host::part(value-mark) {
-    --_r: calc((var(--_vw) - var(--analog-gauge-value-mark-w)) / 2);
-    --_x: calc(var(--_r) + (var(--_r) * cos(var(--_d))));
-    --_y: calc(var(--_r) + (var(--_r) * sin(var(--_d))));
-
-    position: absolute;
-    left: var(--_x);
-    top: var(--_y);
-
-    width: var(--analog-gauge-value-mark-w);
-    display: grid;
-    place-content: center;
-
-    font-size: 3.1cqi;
-    font-weight: 500;
-    color: rgba(255,255,255,0.55);
-    letter-spacing: 0.06em;
-  }
-
-  /* ===== NEW: GLASS (reflection + vignette, sits on top) ===== */
-  :host::part(glass) {
-    grid-area: 1 / 1 / 4 / 4;
-    border-radius: 50%;
-    pointer-events: none;
-
-    background:
-      radial-gradient(circle at 50% 80%,
-        rgba(0,0,0,0.0) 0,
-        rgba(0,0,0,0.10) 55%,
-        rgba(0,0,0,0.35) 100%
-      ),
-      linear-gradient(135deg,
-        rgba(255,255,255,0.20) 0%,
-        rgba(255,255,255,0.06) 18%,
-        rgba(255,255,255,0.00) 40%
-      );
-
-    mix-blend-mode: screen;
-    opacity: 0.55;
-    filter: blur(0.15cqi);
-  }
-`);
+// ============================================================
+// Analog Gauge Web Component (Speedometer)
+// Styles are loaded into the shadow root from cockpit.css.
+// ============================================================
 
 class AnalogGauge extends HTMLElement {
-	static get observedAttributes() {
-		return ['value'];
-	}
-	
-	#root; #units; #value; 
-	constructor() {
-		super();
-		this.#root = this.attachShadow({ mode: 'open' });
-		this.#root.adoptedStyleSheets = [styles];
-		const computedStyle = getComputedStyle(this);
+    static get observedAttributes() { return ['value']; }
 
-		this.#units = {
-			defaultMark: 90,
-			defaultNeedle: 270,
-			max: parseInt(this.getAttribute('max') || 100),
-			min: parseInt(this.getAttribute('min') || 0),
-			range: parseFloat(computedStyle.getPropertyValue("--analog-gauge-range")) || 250,
-			suffix: this.getAttribute('suffix') || '',
-			start: parseFloat(computedStyle.getPropertyValue("--analog-gauge-start-angle")) || 235,
-			value: parseFloat(this.getAttribute('value') || 0)
-		}
+    #root; #units; #value;
 
-		this.#units.minDegree = this.#units.start - this.#units.defaultNeedle;
-		this.#units.totalRange = this.#units.range;
+    constructor() {
+        super();
+        this.#root = this.attachShadow({ mode: 'open' });
 
-		this.#root.innerHTML = `
-      <div part="bezel"></div>
-      <div part="gauge"></div>
-      <div part="ticks"></div>
-      ${this.#generateValueMarks()}
-      <div part="needle"></div>
-      <div part="hub"></div>
-      <div part="value"></div>
-      <div part="label">${this.getAttribute('label')||''}</div>
-      <div part="label-min">${this.getAttribute('min-label')||''}</div>
-      <div part="label-max">${this.getAttribute('max-label')||''}</div>
-      <div part="glass"></div>
-`;
+        const computedStyle = getComputedStyle(this);
+        this.#units = {
+            defaultMark:   90,
+            defaultNeedle: 270,
+            max:    Number.parseInt(this.getAttribute('max') || 100),
+            min:    Number.parseInt(this.getAttribute('min') || 0),
+            range:  Number.parseFloat(computedStyle.getPropertyValue('--analog-gauge-range')) || 250,
+            suffix: this.getAttribute('suffix') || '',
+            start:  Number.parseFloat(computedStyle.getPropertyValue('--analog-gauge-start-angle')) || 235,
+            value:  Number.parseFloat(this.getAttribute('value') || 0)
+        };
+        this.#units.minDegree  = this.#units.start - this.#units.defaultNeedle;
+        this.#units.totalRange = this.#units.range;
 
-		this.#value = this.#root.querySelector('[part="value"]');
-	}
+        this.#root.innerHTML = `
+            <link rel="stylesheet" href="/static/styles/cockpit.css">
+            <div part="bezel"></div>
+            <div part="gauge"></div>
+            <div part="ticks"></div>
+            ${this.#generateValueMarks()}
+            <div part="needle"></div>
+            <div part="hub"></div>
+            <div part="value"></div>
+            <div part="label">${this.getAttribute('label') || ''}</div>
+            <div part="label-min">${this.getAttribute('min-label') || ''}</div>
+            <div part="label-max">${this.getAttribute('max-label') || ''}</div>
+            <div part="glass"></div>
+        `;
 
-	attributeChangedCallback(name, oldValue, newValue) {
-		if (name === 'value' && oldValue !== newValue) {
-			this.#units.value = parseFloat(newValue || 0);
-			this.#update();
-		}
-	}
+        this.#value = this.#root.querySelector('[part="value"]');
+    }
 
-	#generateValueMarks() {
-		const values = this.getAttribute('values');
-		if (!values) return '';
-		
-		let valueArray = [];
-		let count = 0;
-		
-		if (/^\s*\d+\s*$/.test(values)) {
-			count = parseInt(values.trim());
-			if (isNaN(count) || count <= 0) return '';	
-			valueArray = Array.from({ length: count }, (_, i) => 
-				Math.round(this.#units.min + (i * (this.#units.max - this.#units.min) / (count - 1 || 1)))
-			);
-		} else {
-			valueArray = values.split(',').map(v => v.trim());
-			count = valueArray.length;
-			if (count <= 0) return '';
-		}
-		
-		const degreeStep = this.#units.range / (count - 1 || 1);
-		
-		return `
-		<ul part="value-marks">
-			${valueArray.map((value, i) => {
-				const degree = this.#units.start - this.#units.defaultMark + (i * degreeStep);
-				return `<li style="--_d:${degree}deg" part="value-mark">${value}</li>`;
-			}).join('')}
-		</ul>`;
-	}
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (name === 'value' && oldValue !== newValue) {
+            this.#units.value = Number.parseFloat(newValue || 0);
+            this.#update();
+        }
+    }
 
-	#update() {
-		const normalizedValue = Math.max(this.#units.min, Math.min(this.#units.max, this.#units.value));
-		const valuePercentage = (normalizedValue - this.#units.min) / (this.#units.max - this.#units.min);
-		const degree = this.#units.minDegree + (valuePercentage * this.#units.totalRange);
-		this.style.setProperty('--analog-gauge-value', `${valuePercentage * this.#units.range}deg`);
-		this.style.setProperty('--_d', `${degree}deg`);
-		this.#value.textContent = this.#units.value + this.#units.suffix;
-	}
+    #generateValueMarks() {
+        const values = this.getAttribute('values');
+        if (!values) return '';
+
+        let valueArray = [];
+        let count = 0;
+
+        if (/^\s*\d+\s*$/.test(values)) {
+            count = Number.parseInt(values.trim());
+            if (Number.isNaN(count) || count <= 0) return '';
+            valueArray = Array.from({ length: count }, (_, i) =>
+                Math.round(this.#units.min + (i * (this.#units.max - this.#units.min) / (count - 1 || 1)))
+            );
+        } else {
+            valueArray = values.split(',').map(v => v.trim());
+            count = valueArray.length;
+            if (count <= 0) return '';
+        }
+
+        const degreeStep = this.#units.range / (count - 1 || 1);
+        return `
+        <ul part="value-marks">
+            ${valueArray.map((value, i) => {
+                const degree = this.#units.start - this.#units.defaultMark + (i * degreeStep);
+                return `<li style="--_d:${degree}deg" part="value-mark">${value}</li>`;
+            }).join('')}
+        </ul>`;
+    }
+
+    #update() {
+        const normalizedValue = Math.max(this.#units.min, Math.min(this.#units.max, this.#units.value));
+        const valuePercentage = (normalizedValue - this.#units.min) / (this.#units.max - this.#units.min);
+        const degree          = this.#units.minDegree + (valuePercentage * this.#units.totalRange);
+        this.style.setProperty('--analog-gauge-value', `${valuePercentage * this.#units.range}deg`);
+        this.style.setProperty('--_d', `${degree}deg`);
+        this.#value.textContent = this.#units.value + this.#units.suffix;
+    }
 }
 
 customElements.define('analog-gauge', AnalogGauge);
