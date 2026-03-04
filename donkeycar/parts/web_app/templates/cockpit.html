@@ -29,9 +29,6 @@
           {{ _("circuit") }}:
           <span id="circuit_display">Default</span>
         </div>
-        
-        <!-- absolute positioned to not take up space -->
-        <img id="circuit_image" src="/static/images/default_circuit.png" alt="Circuit Minimap">
       </div>
 
 
@@ -42,7 +39,9 @@
     <div class="digital">
     <span id="weather_display">
       <img id="surface_icon" alt="weather_icon" src="{{ current_surface_icon }}" />
-      <span id="surface_text">{{ current_surface }}</span></span>
+      <span id="surface_text">{{ current_surface }}</span>
+    </span>
+    <span id="more_info"><img id="circuit_image" src="{{ current_circuit_icon }}"" /></span>
     </div>
   </div>
 

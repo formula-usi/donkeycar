@@ -74,8 +74,8 @@ body {
 }
 
 .content {
-  background: linear-gradient(color-mix(in srgb, var(--color-bg) 30%, transparent), color-mix(in srgb, var(--color-bg) 43%, transparent)),
-  linear-gradient(to bottom, rgb(0 0 0) 0%, #00000000 18%, #00000000 86%, rgb(0 0 0) 96%),
+  background:  linear-gradient(to top, black 0%, #00000000 7%, #00000000 97%, black 96%),  
+  linear-gradient(to bottom, black 0%, #00000000 1%, #00000000 86%, black 96%),  
   url("/static/images/cockpit/background2.png");
   background-repeat: no-repeat;
   background-size: 100vw 100vh;
@@ -114,17 +114,20 @@ body {
   color: var(--color-accent-2);
 }
 
-#circuit_image {
-	width: 14vw;
-    position: absolute;
-    right: 4vw;
-    top: 4vh;
-}
-
 #weather_display {
     position: absolute;
+    bottom: 11.5vh;
+    right: 21.5vw;
+}
+
+#more_info {
+    position: absolute;
     bottom: 11vh;
-    right: 21vw;
+    right: 13.5vw;
+}
+
+#circuit_image {
+  width: 7vw;
 }
 
 .screen {
@@ -162,7 +165,7 @@ body {
   left: 25vw;
   height: 60vh;
   width: 50vw;
-  filter: sepia(1) hue-rotate(199deg) opacity(0.7);
+  filter: sepia(1) hue-rotate(199deg) saturate(2) contrast(0.8) brightness(0.7);
 }
 
 .speedometer_gauge {
@@ -205,7 +208,7 @@ body {
   --ag-bg0: var(--color-gauge-bg);
   --ag-panel: var(--color-bg);
   --ag-metal0: var(--color-primary-2);
-  --ag-metal1: var(--color-bg);
+  --ag-metal1: var(--color-primary-2);
   --ag-glow: var(--color-accent-2);
   --ag-glow2: var(--color-accent-2);
 
@@ -213,7 +216,7 @@ body {
     color-mix(in oklab, var(--color-accent) 80%, #000 20%),
     color-mix(in oklab, var(--color-accent) 85%, #000 15%),
     color-mix(in oklab, var(--color-primary-2) 85%, #000 15%),
-    color-mix(in oklab, var(--color-bg) 90%, #000 10%) var(--analog-gauge-range),
+    color-mix(in oklab, var(--color-primary-2) 90%, #000 10%) var(--analog-gauge-range),
     #0000 0 var(--analog-gauge-range);
 
   --analog-gauge-mask-circle:
@@ -292,7 +295,6 @@ body {
     inset 0 -18px 32px rgba(0,0,0,0.50);
   filter: saturate(1.05) contrast(1.05)
     drop-shadow(0 0 18px color-mix(in oklab, var(--ag-glow), transparent 65%));
-  opacity: 0.7;
 }
 
 /* ===== TICK MARKS ===== */
