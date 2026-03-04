@@ -8,15 +8,19 @@
 const state = {
     circuit: 'Default',
     circuit_icon: '/static/images/default_circuit.png',
+    surface: 'dry',
+    surface_icon: '/static/images/weather/dry.svg',
     tele: {
         user:  { angle: 0, throttle: 0 },
         pilot: { angle: 0, throttle: 0 }
     }
 };
 
-// Seed circuit name from the server-rendered value if available.
+// Seed values from server-rendered state if available.
 if (globalThis.serverState) {
     if (globalThis.serverState.circuit !== undefined) state.circuit = globalThis.serverState.circuit;
+    if (globalThis.serverState.current_surface !== undefined) state.surface = globalThis.serverState.current_surface;
+    if (globalThis.serverState.surface_icon !== undefined) state.surface_icon = globalThis.serverState.surface_icon;
 }
 
 // ============================================================
@@ -59,6 +63,16 @@ function updateUI() {
     if (state.circuit_icon) {
         circuitImage.src = state.circuit_icon;
         circuitImage.alt = state.circuit + ' Circuit';
+    }
+
+    // Weather / surface display
+    const weatherDisplay = document.getElementById('weather_display');
+    console.log('Updating surface display:', state.surface, state.surface_icon);
+    if (weatherDisplay) {
+        const img = document.getElementById('surface_icon');
+        if (img) img.src = state.surface_icon;
+        const surfaceText = document.getElementById('surface_text');
+        if (surfaceText) surfaceText.textContent = state.surface;
     }
 
     // Steering wheel rotation (angle is -1..1)

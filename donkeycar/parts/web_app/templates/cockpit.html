@@ -3,7 +3,7 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Formula USI </title>
-  <link rel="icon" type="image/x-icon" href="/static/images/cockpit/formula_usi.png">
+  <link rel="icon" type="image/x-icon" href="/static/images/cockpit/si_logo.webp">
   <script type="text/javascript" src="/static/js/cockpit.js"></script>
   <script
     src="/static/js/jquery-3.1.1.min.js"
@@ -22,7 +22,6 @@
       <div class="topbar">
 
         <div class="logos">
-          <!-- <img alt="SI Logo" src="/static/images/cockpit/si_logo.webp" class="logo logo_si"> -->
           <img alt="Formula USI Logo" src="/static/images/cockpit/formula_usi.png" class="logo logo_formula_usi">
         </div>
 
@@ -42,8 +41,8 @@
     
     <div class="digital">
     <span id="weather_display">
-      <img alt="weather_icon" src="{{ current_surface_icon }}" />
-      {{ current_surface }} </span>
+      <img id="surface_icon" alt="weather_icon" src="{{ current_surface_icon }}" />
+      <span id="surface_text">{{ current_surface }}</span></span>
     </div>
   </div>
 
