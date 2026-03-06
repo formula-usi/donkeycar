@@ -24,6 +24,24 @@ if (globalThis.serverState) {
 }
 
 // ============================================================
+// i18n
+// ============================================================
+
+function t(key) {
+    const lang = globalThis.currentLanguage || 'en';
+    const dict = (globalThis.translations || {})[lang] || {};
+    return dict[key] || key;
+}
+
+function applyTranslations(lang) {
+    const dict = (globalThis.translations || {})[lang] || {};
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        const key = el.getAttribute('data-i18n');
+        el.textContent = dict[key] || key;
+    });
+}
+
+// ============================================================
 // State & UI
 // ============================================================
 
@@ -56,7 +74,7 @@ function updateState(state, data) {
 
 function updateUI() {
     // Circuit name
-    document.getElementById('circuit_display').textContent = state.circuit;
+    document.getElementById('circuit_display').textContent = t(state.circuit);
 
     // Circuit minimap
     const circuitImage = document.getElementById('circuit_image');
@@ -71,8 +89,6 @@ function updateUI() {
     if (weatherDisplay) {
         const img = document.getElementById('surface_icon');
         if (img) img.src = state.surface_icon;
-        const surfaceText = document.getElementById('surface_text');
-        if (surfaceText) surfaceText.textContent = state.surface;
     }
 
     // Steering wheel rotation (angle is -1..1)
@@ -103,11 +119,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     socket.onmessage = function(event) {
         const data = JSON.parse(event.data);
+        if (data.language !== undefined) {
+            globalThis.currentLanguage = data.language;
+            applyTranslations(data.language);
+            updateUI();
+        }
         if (updateState(state, data)) {
             updateUI();
         }
     };
 
+    applyTranslations(globalThis.currentLanguage || 'en');
     updateUI();
 });
 

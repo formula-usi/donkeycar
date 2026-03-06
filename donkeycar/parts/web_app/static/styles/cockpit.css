@@ -116,8 +116,9 @@ body {
 
 #weather_display {
     position: absolute;
-    bottom: 11.5vh;
+    bottom: 11vh;
     right: 21.5vw;
+    width: 4vw;
 }
 
 #more_info {

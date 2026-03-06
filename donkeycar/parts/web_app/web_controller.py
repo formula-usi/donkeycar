@@ -121,6 +121,7 @@ class LocalWebController(tornado.web.Application):
         self.surface = "dry"
         self.surface_icon = f"/static/images/weather/{self.surface}.svg"
         self.circuit_icon = "/static/images/default_circuit.png"  # For blob image data
+        self.language = "en"
         self.circuit_changed = False
 
         self.num_records = 0
@@ -263,7 +264,8 @@ class DriveAPI(RequestHandler):
             "current_ai_mul": str(self.ai_throttle_mul),
             "current_circuit": self.application.circuit,
             "current_surface": self.application.surface,
-            "current_circuit_icon": self.application.circuit_icon
+            "current_circuit_icon": self.application.circuit_icon,
+            "current_language": self.application.language
         }
         self.render("templates/drive.html", **data)
 
@@ -284,6 +286,8 @@ class DriveAPI(RequestHandler):
             self.application.recording = data['recording']
         if data.get('buttons') is not None:
             latch_buttons(self.application.buttons, data['buttons'])
+        if data.get('language') is not None:
+            self.application.language = data['language']
 
 
 class WsTest(RequestHandler):
@@ -422,7 +426,13 @@ class WebSocketDriveAPI(tornado.websocket.WebSocketHandler):
         logger.debug(f"Computed values - angle: {new_steering}, throttle: {new_throttle}")
        
         changes = {}
-        
+
+        # Update language and trigger reload on cockpit
+        app: LocalWebController = self.application  # type: ignore[assignment]
+        if data.get('language') is not None and app.language != data['language']:
+            app.language = data['language']
+            changes['language'] = app.language
+
         # Send angle and throttle updates to all connected clients in nested structure
         if 'angle' in data or 'throttle' in data:
             changes['tele'] = {'user': {}}
@@ -578,20 +588,34 @@ class VideoAPI(RequestHandler):
 
 class CockpitAPI(RequestHandler):
     """Serves the cockpit web page using cockpit.html"""
-    
+
+    def get_user_locale(self):
+        return tornado.locale.get(self.application.language)
     def get(self):
+        import csv as _csv
+        import glob as _glob
         angle_to_print = float(self.application.throttle) if abs(float(self.application.throttle)) > 0.05 else 0
+        # Build client-side translations dict from all locale CSVs
+        translations = {}
+        locale_dir = os.path.join(self.application.static_file_path, "locale")
+        for csv_path in _glob.glob(os.path.join(locale_dir, "*.csv")):
+            lang = os.path.basename(csv_path).replace('.csv', '')
+            translations[lang] = {}
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                for row in _csv.reader(f):
+                    if len(row) >= 2:
+                        translations[lang][row[0]] = row[1]
         data = {
             "current_ai_mul": str(self.application.cfg.AI_THROTTLE_MULT if self.application.cfg is not None else 0.0),
             "current_circuit": self.application.circuit,
+            "current_language": self.application.language,
             "current_surface": self.application.surface,
             "current_surface_icon": self.application.surface_icon,
             "current_circuit_icon": self.application.circuit_icon,
             "throttle": self.application.throttle,
-            "angle": angle_to_print
+            "angle": angle_to_print,
+            "translations_json": json.dumps(translations),
         }
-        tornado.locale.load_translations(os.path.join(self.application.static_file_path, "locale"))
-        tornado.locale.set_default_locale('en')
         self.render("templates/cockpit.html", **data)
 
 
@@ -601,11 +625,13 @@ class CircuitAPI(RequestHandler):
                    circuit: str = "Default",
                    surface: str = "dry",
                    surface_icon: str = "static/images/weather/dry.svg",
-                   circuit_icon: str = "static/images/circuit_icon.png") -> None:
+                   circuit_icon: str = "static/images/circuit_icon.png",
+                   language: str = "en") -> None:
         self.circuit = circuit
         self.surface = surface
         self.surface_icon = surface_icon
         self.circuit_icon = circuit_icon
+        self.language = language
 
     def set_default_headers(self):
         self.set_header("Access-Control-Allow-Origin", "*")
@@ -618,7 +644,7 @@ class CircuitAPI(RequestHandler):
         self.finish()
 
     def get(self):
-        data = {"current_circuit": self.circuit, "current_surface": self.surface, "current_surface_icon": self.surface_icon, "circuit_icon": self.circuit_icon}
+        data = {"current_circuit": self.circuit, "current_surface": self.surface, "current_surface_icon": self.surface_icon, "circuit_icon": self.circuit_icon, "language": self.language}
         self.render("templates/drive.html", **data)
 
     def post(self):
@@ -643,6 +669,9 @@ class CircuitAPI(RequestHandler):
         if data.get('circuit_changed') is not None:
             self.application.circuit_changed = data['circuit_changed']
             changes['circuit_changed'] = self.application.circuit_changed
+        if data.get('language') is not None:
+            self.application.language = data['language']
+            changes['language'] = self.application.language
             
         # Send updates to WebSocket clients
         logger.debug(f"CircuitAPI received POST data: {data}")

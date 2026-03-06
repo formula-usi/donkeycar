@@ -26,7 +26,7 @@
         </div>
 
         <div class="digital">
-          {{ _("circuit") }}:
+          <span data-i18n="circuit"></span>:
           <span id="circuit_display">Default</span>
         </div>
       </div>
@@ -39,7 +39,6 @@
     <div class="digital">
     <span id="weather_display">
       <img id="surface_icon" alt="weather_icon" src="{{ current_surface_icon }}" />
-      <span id="surface_text">{{ current_surface }}</span>
     </span>
     <span id="more_info"><img id="circuit_image" src="{{ current_circuit_icon }}"" /></span>
     </div>
@@ -55,11 +54,13 @@
 </html>
 
 <script type="text/javascript">
-   // Initialize state with server-side values
+  // Initialize state with server-side values
   window.serverState = {
     circuit: "{{ current_circuit if current_circuit else 'Default' }}",
     current_surface: "{{ current_surface if current_surface else 'Dry' }}",
     weather_icon: "{{ current_surface_icon if current_surface_icon else '/static/images/cockpit/dry.svg' }}",
     throttle: "{{  current_ai_mul if current_ai_mul else '0' }}",
   };
+  window.translations = {% raw translations_json %};
+  window.currentLanguage = "{{ current_language }}";
 </script>
