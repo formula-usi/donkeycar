@@ -218,6 +218,7 @@ EOF
     
     # Install gym-donkeycar if gym is requested or if platform is macos
     if [[ "$extras_str" == *"gym-donkeycar"* ]] || [[ "$platform" == "macos" ]]; then
+        git submodule update --init --recursive
         if [[ -d "gym-donkeycar" ]]; then
             print_info "Installing local gym-donkeycar package..."
             if uv pip install -p .venv -e ./gym-donkeycar; then
