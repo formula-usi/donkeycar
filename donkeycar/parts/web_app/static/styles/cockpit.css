@@ -163,10 +163,10 @@ body {
 #steering_wheel {
   position: absolute;
   bottom: 0;
-  left: 25vw;
+  left: 27vw;
   height: 60vh;
-  width: 50vw;
-  filter: sepia(1) hue-rotate(199deg) saturate(2) contrast(0.8) brightness(0.7);
+  width: 45vw;
+  filter: saturate(1) brightness(0.7);
 }
 
 .speedometer_gauge {
