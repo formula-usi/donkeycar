@@ -46,6 +46,12 @@ def get_default_transform(for_video=False, for_inference=False, resize=True, cro
         transforms.Normalize(mean=mean, std=std)
     ]
     
+    # Add a wrapper to handle numpy arrays - converts to PIL if needed
+    def numpy_to_pil_wrapper(img):
+        if isinstance(img, np.ndarray):
+            return Image.fromarray(img)
+        return img
+    
     # Handle different crop/resize combinations
     if crop and not resize:
         # Crop then resize back to original size
@@ -100,6 +106,9 @@ def get_default_transform(for_video=False, for_inference=False, resize=True, cro
         
         # Add augmentation before ToTensor and Normalize
         transform_items.insert(0, AlbumentationsTransform(augmentation))
+    
+    # Insert numpy-to-PIL converter at the very beginning
+    transform_items.insert(0, transforms.Lambda(numpy_to_pil_wrapper))
 
     return transforms.Compose(transform_items)
 
