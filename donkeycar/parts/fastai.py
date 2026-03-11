@@ -249,11 +249,11 @@ class FastAiPilot(ABC):
         next_index = latest_index + 1
 
         if next_index < 50:
-            transformed = self.transform(norm_arr)
+            # norm_arr is already the transformed tensor
             # Denormalize and convert tensor back to PIL Image
             mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
             std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
-            denormalized = transformed * std + mean
+            denormalized = norm_arr * std + mean
             # Clamp to [0, 1] and convert to [0, 255]
             denormalized = torch.clamp(denormalized, 0, 1)
             # Convert from CHW to HWC and to numpy
