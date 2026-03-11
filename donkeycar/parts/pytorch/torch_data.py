@@ -51,16 +51,16 @@ def get_default_transform(for_video=False, for_inference=False, resize=True, cro
         # Crop then resize back to original size
         def crop_and_restore(img):
             original_size = img.size  # (width, height)
-            cropped = img.crop((-1, 35, img.width, img.height))
+            cropped = img.crop((0, 35, img.width, img.height))
             return cropped.resize(original_size, Image.BILINEAR)
-        transform_items.insert(-1, transforms.Lambda(crop_and_restore))
+        transform_items.insert(0, transforms.Lambda(crop_and_restore))
     elif crop and resize:
         # Crop then resize to target size
-        transform_items.insert(-1, transforms.Resize(input_size))
-        transform_items.insert(-1, transforms.Lambda(lambda img: img.crop((0, 30, img.width, img.height))))
+        transform_items.insert(0, transforms.Resize(input_size))
+        transform_items.insert(0, transforms.Lambda(lambda img: img.crop((0, 30, img.width, img.height))))
     elif resize:
         # Just resize to target size
-        transform_items.insert(-1, transforms.Resize(input_size))
+        transform_items.insert(0, transforms.Resize(input_size))
     
     # Albumentations wrapper for processing
     class AlbumentationsTransform:
@@ -83,7 +83,7 @@ def get_default_transform(for_video=False, for_inference=False, resize=True, cro
         clahe = A.Compose([
             A.CLAHE(clip_limit=2.0, tile_grid_size=(8, 8), p=1.0),
         ])
-        transform_items.insert(-1, transforms.Lambda(lambda img: ImageOps.autocontrast(img)))
+        transform_items.insert(0, transforms.Lambda(lambda img: ImageOps.autocontrast(img)))
         # transform_items.insert(0, AlbumentationsTransform(clahe))
 
     if not for_inference:
