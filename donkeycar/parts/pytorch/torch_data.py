@@ -86,7 +86,7 @@ def get_default_transform(for_video=False, for_inference=False, resize=True, cro
         transform_items.insert(-1, transforms.Lambda(lambda img: ImageOps.autocontrast(img)))
         # transform_items.insert(0, AlbumentationsTransform(clahe))
 
-    if not for_inference and False:
+    if not for_inference:
         # Add data augmentation for training
         augmentation = A.Compose([
             A.GaussNoise(var_limit=(10.0, 50.0), p=0.2),
