@@ -33,3 +33,5 @@ EARLY_STOP_PATIENCE = 15
 DEFAULT_MODEL_TYPE = 'fastai_linear'
 OPTIMIZER = "adam"                #adam, sgd, rmsprop, etc.. None accepts default
 BATCH_SIZE = 128
+
+TRANSFORMATIONS = ['CROP','TRAPEZE']

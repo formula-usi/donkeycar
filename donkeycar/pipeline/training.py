@@ -59,6 +59,22 @@ class BatchSequence(object):
             img_arr = self.augmentation.run(img_arr)
         img_arr = self.post_transformation.run(img_arr)
 
+        #save the augmented image to a file for debugging
+        from PIL import Image
+        folder = 'test_images'
+        #get the highest index in the folder
+        os.makedirs(folder, exist_ok=True)
+        #get the highest index of the images in the folder
+        existing_images = [f for f in os.listdir(folder) if f.endswith('.jpg')]
+        if existing_images:
+            latest_index = max(int(f.split('.')[0]) for f in existing_images)
+        else:
+            latest_index = -1
+        next_index = latest_index + 1
+
+        if next_index < 50:
+            Image.fromarray(img_arr).save(os.path.join(folder, f'{next_index}.jpg'))
+
         return img_arr
 
     def _create_pipeline(self) -> TfmIterator:
@@ -138,18 +154,22 @@ def train(cfg: Config, tub_paths: str, model: str = None,
         
         # Check if model provides custom transform (e.g., MobileNet with auto-resize)
         if hasattr(kl, 'get_train_transform'):
-            transform = kl.get_train_transform()
-            logger.info(f'Using model-specific transform: {transform}')
+            transform_train = kl.get_train_transform()
+            transform_val = kl.get_train_transform()  # Assuming model handles train/val internally
+            logger.info(f'Using model-specific transform: {transform_train}')
+   
         else:
-            transform = get_default_transform(resize=False)
-        
+            # Create separate transforms for training (with augmentation) and validation (without)
+            transform_train = get_default_transform(resize=False, for_inference=False)
+            transform_val = get_default_transform(resize=False, for_inference=True)
+
         # Use TorchTubDatasetWithSurface for multi-weather models
         if 'mw' in model_type.lower():
-            dataset_train = TorchTubDatasetWithSurface(cfg, training_records, transform=transform)
-            dataset_validate = TorchTubDatasetWithSurface(cfg, validation_records, transform=transform)
+            dataset_train = TorchTubDatasetWithSurface(cfg, training_records, transform=transform_train)
+            dataset_validate = TorchTubDatasetWithSurface(cfg, validation_records, transform=transform_val)
         else:
-            dataset_train = TorchTubDataset(cfg, training_records, transform=transform)
-            dataset_validate = TorchTubDataset(cfg, validation_records, transform=transform)
+            dataset_train = TorchTubDataset(cfg, training_records, transform=transform_train)
+            dataset_validate = TorchTubDataset(cfg, validation_records, transform=transform_val)
 
         # Store the names of the validation records in a json file with the same name as the model, but in json format
         import json

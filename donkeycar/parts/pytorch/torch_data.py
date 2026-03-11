@@ -8,9 +8,13 @@ from typing import List, Any
 from donkeycar.pipeline.types import TubRecord, TubDataset
 from donkeycar.pipeline.sequence import TubSequence
 import pytorch_lightning as pl
+import albumentations as A
 
+from PIL import Image
+import os
+import numpy as np
 
-def get_default_transform(for_video=False, for_inference=False, resize=True):
+def get_default_transform(for_video=False, for_inference=False, resize=True, crop=True, enhance_contrast=False):
     """
     Creates a default transform to work with torchvision models
 
@@ -21,8 +25,13 @@ def get_default_transform(for_video=False, for_inference=False, resize=True):
     in a clip. The images have to be loaded in to a range of [0, 1] and 
     then normalized using mean = [0.43216, 0.394666, 0.37645] and 
     std = [0.22803, 0.22145, 0.216989].
-    """
 
+    If crop crops 35 pixel from the top of the image and keep the rest the same
+    
+    Args:
+        enhance_contrast: Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
+                         Helps with varying lighting conditions at inference time
+    """
     mean = [0.485, 0.456, 0.406]
     std = [0.229, 0.224, 0.225]
     input_size = (224, 224)
@@ -36,9 +45,57 @@ def get_default_transform(for_video=False, for_inference=False, resize=True):
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std)
     ]
-
-    if resize:
+    
+    # Handle different crop/resize combinations
+    if crop and not resize:
+        # Crop then resize back to original size
+        def crop_and_restore(img):
+            original_size = img.size  # (width, height)
+            cropped = img.crop((0, 35, img.width, img.height))
+            return cropped.resize(original_size, Image.BILINEAR)
+        transform_items.insert(0, transforms.Lambda(crop_and_restore))
+    elif crop and resize:
+        # Crop then resize to target size
         transform_items.insert(0, transforms.Resize(input_size))
+        transform_items.insert(0, transforms.Lambda(lambda img: img.crop((0, 30, img.width, img.height))))
+    elif resize:
+        # Just resize to target size
+        transform_items.insert(0, transforms.Resize(input_size))
+    
+    # Albumentations wrapper for processing
+    class AlbumentationsTransform:
+        def __init__(self, transform):
+            self.transform = transform
+        
+        def __call__(self, img):
+            # Convert PIL Image to numpy array
+            img_np = np.array(img)
+            # Apply albumentations
+            augmented = self.transform(image=img_np)
+            # Convert back to PIL Image
+            return Image.fromarray(augmented['image'])
+
+    # Add contrast enhancement for inference (helps with varying lighting)
+    if for_inference and enhance_contrast:
+        clahe = A.Compose([
+            A.CLAHE(clip_limit=2.0, tile_grid_size=(8, 8), p=1.0)
+        ])
+        transform_items.insert(0, AlbumentationsTransform(clahe))
+
+    if not for_inference:
+        # Add data augmentation for training
+        augmentation = A.Compose([
+            A.GaussNoise(var_limit=(10.0, 50.0), p=0.2),
+            # A.RandomGamma(gamma_limit=(80, 120), p=0.2),
+            A.Blur(blur_limit=3, p=0.2),
+            A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.3),
+            A.RandomFog(fog_coef_lower=0.1, fog_coef_upper=0.3, p=0.1),
+            A.RandomShadow(shadow_roi=(0, 0.5, 1, 1), p=0.2),
+            A.GaussianBlur(blur_limit=(3, 5), p=0.1),
+        ])
+        
+        # Add augmentation before ToTensor and Normalize
+        transform_items.insert(0, AlbumentationsTransform(augmentation))
 
     return transforms.Compose(transform_items)
 
@@ -85,6 +142,32 @@ class TorchTubDataset(IterableDataset):
         def x_transform(record: TubRecord):
             # Loads the result of Image.open()
             img_arr = record.image(as_nparray=False)
+
+            #save the augmented image to a file for debugging
+
+            folder = 'test_images'
+            #get the highest index in the folder
+            os.makedirs(folder, exist_ok=True)
+            #get the highest index of the images in the folder
+            existing_images = [f for f in os.listdir(folder) if f.endswith('.jpg')]
+            if existing_images:
+                latest_index = max(int(f.split('.')[0]) for f in existing_images)
+            else:
+                latest_index = -1
+            next_index = latest_index + 1
+
+            if next_index < 50:
+                transformed = self.transform(img_arr)
+                # Denormalize and convert tensor back to PIL Image
+                mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
+                std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+                denormalized = transformed * std + mean
+                # Clamp to [0, 1] and convert to [0, 255]
+                denormalized = torch.clamp(denormalized, 0, 1)
+                # Convert from CHW to HWC and to numpy
+                img_numpy = (denormalized.permute(1, 2, 0).numpy() * 255).astype('uint8')
+                Image.fromarray(img_numpy).save(os.path.join(folder, f'{next_index}.jpg'))
+                return transformed
             return self.transform(img_arr)
 
         # Build pipeline using the transformations

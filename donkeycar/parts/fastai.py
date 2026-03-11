@@ -8,6 +8,7 @@ include one or more models to help direct the vehicles motion.
 
 """
 from abc import ABC, abstractmethod
+import os
 
 import numpy as np
 from pathlib import Path
@@ -29,7 +30,7 @@ from torch.utils.data import IterableDataset, DataLoader
 from torchvision import transforms
 from torch.nn.modules.loss import GaussianNLLLoss, _Loss
 from torch.nn import functional as F
-
+from PIL import Image
 ONE_BYTE_SCALE = 1.0 / 255.0
 
 # type of x
@@ -233,8 +234,33 @@ class FastAiPilot(ABC):
                             state vector in the Behavioural model
         :return:            tuple of (angle, throttle)
         """
-        transform = get_default_transform(resize=False)
+        transform = get_default_transform(resize=False, for_inference=True)
         norm_arr = transform(img_arr)
+
+        folder = 'inference_images'
+        #get the highest index in the folder
+        os.makedirs(folder, exist_ok=True)
+        #get the highest index of the images in the folder
+        existing_images = [f for f in os.listdir(folder) if f.endswith('.jpg')]
+        if existing_images:
+            latest_index = max(int(f.split('.')[0]) for f in existing_images)
+        else:
+            latest_index = -1
+        next_index = latest_index + 1
+
+        if next_index < 50:
+            transformed = self.transform(norm_arr)
+            # Denormalize and convert tensor back to PIL Image
+            mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
+            std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+            denormalized = transformed * std + mean
+            # Clamp to [0, 1] and convert to [0, 255]
+            denormalized = torch.clamp(denormalized, 0, 1)
+            # Convert from CHW to HWC and to numpy
+            img_numpy = (denormalized.permute(1, 2, 0).numpy() * 255).astype('uint8')
+            Image.fromarray(img_numpy).save(os.path.join(folder, f'{next_index}.jpg'))
+
+
         tensor_other_array = torch.FloatTensor(other_arr) if other_arr else None
         return self.inference(norm_arr, tensor_other_array)
 
@@ -539,7 +565,7 @@ class FastAILinearMW(FastAILinear):
         Override run to handle surface_id as integer (not float).
         If other_arr is provided, it's assumed to be [surface_id] or surface_id.
         """
-        transform = get_default_transform(resize=False)
+        transform = get_default_transform(resize=False, for_inference=True)
         norm_arr = transform(img_arr)
         
         # If other_arr is provided, use it as surface_id (convert to LongTensor)
@@ -755,8 +781,9 @@ class FastAILinearMWUncertainty(FastAIUncertainty):
         Override run to handle surface_id as integer (not float).
         If other_arr is provided, it's assumed to be [surface_id] or surface_id.
         """
-        transform = get_default_transform(resize=False)
+        transform = get_default_transform(resize=False, for_inference=True)
         norm_arr = transform(img_arr)
+        
         
         # If other_arr is provided, use it as surface_id (convert to LongTensor)
         if other_arr is not None:
