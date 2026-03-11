@@ -76,7 +76,7 @@ def get_default_transform(for_video=False, for_inference=False, resize=True, cro
             return Image.fromarray(augmented['image'])
 
     # Add contrast enhancement for inference (helps with varying lighting)
-    if for_inference and enhance_contrast:
+    if enhance_contrast:
         clahe = A.Compose([
             A.CLAHE(clip_limit=2.0, tile_grid_size=(8, 8), p=1.0)
         ])
