@@ -1,4 +1,5 @@
 import math
+from operator import is_
 import os
 from time import time
 from typing import List, Dict, Union, Tuple
@@ -132,6 +133,7 @@ def train(cfg: Config, tub_paths: str, model: str = None,
     kl = get_model_by_type(model_type, cfg)
     if transfer:
         kl.load(transfer)
+        print("Loaded transfer learning model from", transfer)
     if cfg.PRINT_MODEL_SUMMARY:
         kl.interpreter.summary()
 
@@ -193,6 +195,7 @@ def train(cfg: Config, tub_paths: str, model: str = None,
                          "size or add more data."
     logger.info(f'Train with image caching: '
                 f'{getattr(cfg, "CACHE_IMAGES", True)}')
+    is_fine_tuning = transfer is not None
     history = kl.train(model_path=model_path,
                        train_data=dataset_train,
                        train_steps=train_size,
@@ -203,7 +206,8 @@ def train(cfg: Config, tub_paths: str, model: str = None,
                        verbose=cfg.VERBOSE_TRAIN,
                        min_delta=cfg.MIN_DELTA,
                        patience=cfg.EARLY_STOP_PATIENCE,
-                       show_plot=cfg.SHOW_PLOT)
+                       show_plot=cfg.SHOW_PLOT,
+                       is_fine_tuning=is_fine_tuning)
 
     # We are doing the tflite/trt conversion here on a previously saved model
     # and not on the kl.interpreter.model object directly. The reason is that

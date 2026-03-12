@@ -8,6 +8,7 @@ include one or more models to help direct the vehicles motion.
 
 """
 from abc import ABC, abstractmethod
+from operator import is_
 import os
 
 import numpy as np
@@ -308,12 +309,22 @@ class FastAiPilot(ABC):
               verbose: int = 1,
               min_delta: float = .0005,
               patience: int = 5,
-              show_plot: bool = False):
+              show_plot: bool = False,
+              is_fine_tuning: bool = False) -> Dict[str, List[float]]:
         """
         trains the model
         """
         assert isinstance(self.interpreter, FastAIInterpreter)
         model = self.interpreter.model
+        if is_fine_tuning:
+            # Freeze all layers except the last ones for fine-tuning
+            for param in model.parameters():
+                param.requires_grad = False
+            # Unfreeze the last layers fc1, fc2, output1, output2 and uncertainty heads if they exist
+            for name, param in model.named_parameters():
+                if any(layer in name for layer in ['fc1', 'fc2', 'conv64_3_2', 'output1', 'output2', 'output1_uncertainty', 'output2_uncertainty']):
+                    param.requires_grad = True
+            
 
         # Detect device and log info
         use_cuda = torch.cuda.is_available()
@@ -587,6 +598,7 @@ class Linear(nn.Module):
         self.conv32 = nn.Conv2d(24, 32, kernel_size=(5, 5), stride=(2, 2))
         self.conv64_5 = nn.Conv2d(32, 64, kernel_size=(5, 5), stride=(2, 2))
         self.conv64_3 = nn.Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1))
+        self.conv64_3_2 = nn.Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1))
         self.fc1 = nn.Linear(6656, 100)
         self.fc2 = nn.Linear(100, 50)
         self.drop = nn.Dropout(self.dropout)
@@ -604,7 +616,7 @@ class Linear(nn.Module):
         x = self.drop(x)
         x = self.relu(self.conv64_3(x))
         x = self.drop(x)
-        x = self.relu(self.conv64_3(x))
+        x = self.relu(self.conv64_3_2(x))
         x = self.drop(x)
         x = self.flatten(x)
         x = self.fc1(x)
