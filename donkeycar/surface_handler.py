@@ -48,16 +48,18 @@ def apply_wet_conditions(throttle, old_throttle):
     noise = 0.7
     throttle_inversion_probability = 0.05
     max_throttle_inversion = 0.6
-    return apply_throttle_conditions(throttle, old_throttle, max_throttle_change, noise, throttle_inversion_probability, max_throttle_inversion)
+    additional_multiplier = 0.1
+    return apply_throttle_conditions(throttle, old_throttle, max_throttle_change, noise, throttle_inversion_probability, max_throttle_inversion, additional_multiplier)
 
 def apply_icy_conditions(throttle, old_throttle):
     """Simulate icy road conditions - very limited traction and delayed response"""
     # Severely reduced acceleration/deceleration on ice
     max_throttle_change = 0.95
-    noise = 0.9
+    noise = 0.7
     throttle_inversion_probability = 0.1
-    max_throttle_inversion = 0.9
-    return apply_throttle_conditions(throttle, old_throttle, max_throttle_change, noise, throttle_inversion_probability, max_throttle_inversion)
+    max_throttle_inversion = 0.7
+    additional_multiplier = 0.15
+    return apply_throttle_conditions(throttle, old_throttle, max_throttle_change, noise, throttle_inversion_probability, max_throttle_inversion, additional_multiplier)
     
 def throttle_inversion(throttle, max_inversion):
     if throttle > 0:
@@ -66,7 +68,7 @@ def throttle_inversion(throttle, max_inversion):
         return throttle + max_inversion * abs(throttle)
     return throttle
 
-def apply_throttle_conditions(throttle, old_throttle, max_throttle_change, max_noise, throttle_inversion_probability=0, max_throttle_inversion=0):
+def apply_throttle_conditions(throttle, old_throttle, max_throttle_change, max_noise, throttle_inversion_probability=0, max_throttle_inversion=0, additional_multiplier = 0):
     throttle_change = throttle - old_throttle
     accellerating = False
     if throttle_change >= 0 and throttle > 0:
@@ -98,8 +100,10 @@ def apply_throttle_conditions(throttle, old_throttle, max_throttle_change, max_n
 
     #random throttle inversion to simulate loss of control
     if throttle_inversion_probability > 0 and random.random() < throttle_inversion_probability:
-        return throttle_inversion(throttle_not_inverted, max_throttle_inversion)
-    return throttle_not_inverted
+        throttle_to_return =  throttle_inversion(throttle_not_inverted, max_throttle_inversion)
+    else:
+        throttle_to_return = throttle_not_inverted
+    return throttle_to_return + additional_multiplier * throttle_to_return
 
 def apply_wet_steering(steering_angle, throttle,  old_steering_angle):
     """Simulate wet road steering - reduced responsiveness and hydroplaning"""
@@ -110,9 +114,9 @@ def apply_wet_steering(steering_angle, throttle,  old_steering_angle):
     return apply_steering(steering_angle, throttle, old_steering_angle, delay, noise, probability_aggressive_noise)
 
 def apply_icy_steering(steering_angle, throttle, old_steering_angle):
-    delay = 0.7
+    delay = 0.6
     noise = 0.25
-    probability_aggressive_noise = 0.3
+    probability_aggressive_noise = 0.07
     return apply_steering(steering_angle, throttle, old_steering_angle, delay, noise, probability_aggressive_noise)
     
 
