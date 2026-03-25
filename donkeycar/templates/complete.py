@@ -52,7 +52,7 @@ from donkeycar.utils import *
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
+logging.disable(logging.WARNING)
 
 def drive(cfg, model_path=None, use_joystick=False, model_type=None,
           camera_type='single', meta=[]):

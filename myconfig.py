@@ -1,4 +1,7 @@
-# PWM_STEERING_THROTTLE
+####################################
+# PWM_STEERING_THROTTLE ############    
+####################################
+
 PWM_STEERING_THROTTLE = {
      "PWM_STEERING_PIN": "PCA9685.1:40.0",   # PWM output pin for steering servo
      "PWM_STEERING_SCALE": 1.0,              # to compensate for PWM frequency differences; NOT for adjusting steering range
@@ -13,25 +16,47 @@ PWM_STEERING_THROTTLE = {
      "THROTTLE_REVERSE_PWM": 220,            # PWM value for max reverse throttle
 }
 
-# VEHICLE
-# DRIVE_LOOP_HZ = 10                          # The vehicle loop will pause if faster than this speed
+####################################
+# CAMERA ###########################
+####################################
 
-# CAMERA
 CAMERA_VFLIP = True
 CAMERA_HFLIP = True
-# CAMERA_FRAMERATE = 15
 
-# AI THROTTLE MULTIPLIER
-AI_THROTTLE_MULT = 0.0                       # this multiplier will scale every throttle value for all output from NN models
+####################################
+# AI THROTTLE MULTIPLIER ###########
+####################################
 
-# JOYSTICK
-CONTROLLER_TYPE = 'ps4'            
+AI_THROTTLE_MULT = 0.0                       # Multiplier to scale throttle value for all output from NN models
+
+####################################
+# JOYSTICK #########################
+####################################
+
+CONTROLLER_TYPE = 'ps4'
 USE_JOYSTICK_AS_DEFAULT = True               # When starting the manage.py it will not require a --js option to use the joystick
 JOYSTICK_DEADZONE = 0.15                     # when non zero, this is the smallest throttle before recording triggered.
 JOYSTICK_MAX_THROTTLE = 1.0                  # Scalar multiplied with the throttle value to limit the maximum throttle
-#JOYSTICK_STEERING_SCALE = 1.0               # Scalar multiplied with the steering value to have a less sensitve steering
+# JOYSTICK_STEERING_SCALE = 1.0              # Scalar multiplied with the steering value to have a less sensitve steering
+
+####################################
+# SELF-DRIVING #####################
+####################################
+
+DEFAULT_MODEL_TYPE = 'fastai_linear_mw'
 MODEL_TAKEOVER = False
 MODEL_TAKEOVER_ANGLE_UNC_THRESHOLD = 0.45
 MODEL_TAKEOVER_THROTTLE_UNC_THRESHOLD = 0.45
 
-DEFAULT_MODEL_TYPE = 'fastai_linear_mw'
+####################################
+# TRAINING #########################
+####################################
+
+# DEFAULT_MODEL_TYPE = 'fastai_linear'
+MAX_EPOCHS = 250
+PRUNE_CNN = True                             # This will remove weights from your model to increase performance.
+LEARNING_RATE = 0.0007
+EARLY_STOP_PATIENCE = 15
+OPTIMIZER = "adam"
+BATCH_SIZE = 128
+TRANSFORMATIONS = ['CROP','TRAPEZE']
