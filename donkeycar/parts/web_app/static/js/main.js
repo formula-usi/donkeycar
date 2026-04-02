@@ -199,16 +199,15 @@ var driveHandler = new function() {
           const ai_multiplier = Number(state.aiThrottleMul);
           if (ai_multiplier >= 0.6){
               const old_multiplier = ai_multiplier;
-              temp_ai_multiplier = ai_multiplier * 1;
+              temp_ai_multiplier = ai_multiplier * 0.5;
               updateState(state, {"aiThrottleMul": temp_ai_multiplier, "circuit_changed": true});
               postDrive(['ai_throttle_update']);
 
-              // wait 2 seconds
               setTimeout(function() {
               updateState(state, {"aiThrottleMul": old_multiplier, "circuit_changed": false});
               postDrive(['ai_throttle_update']);
 
-            }, 1500);
+            }, 1000);
           }
           
           
