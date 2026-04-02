@@ -23,7 +23,7 @@ from donkeycar.pipeline.augmentations import ImageAugmentation
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
+logging.disable(logging.WARNING)
 
 class DriveMode:
     """ Helper class to dispatch between ai and user driving"""
