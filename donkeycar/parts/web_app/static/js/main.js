@@ -57,6 +57,8 @@ var driveHandler = new function() {
     var driveURL = ""
     var socket
 
+    var temp_state = False
+
     this.load = function() {
       // Initialize state with server-side values if available
       if (window.serverState) {
@@ -193,7 +195,8 @@ var driveHandler = new function() {
             updateUI();
         }
 
-        if (data.hasOwnProperty('circuit_changed')) {
+        if (data.hasOwnProperty('circuit_changed')&& temp_state == False)  {
+          temp_state = True
           ai_multiplier = state.aiThrottleMul;
           temp_ai_multiplier = ai_multiplier * 0.5
           updateState(state, {"aiThrottleMul": temp_ai_multiplier, "circuit_changed": true});
@@ -203,6 +206,7 @@ var driveHandler = new function() {
           setTimeout(function() {
             updateState(state, {"aiThrottleMul": ai_multiplier, "circuit_changed": false});
             postDrive(['ai_throttle_update']);
+            temp_state = False
 
           }, 1500);
 
