@@ -90,13 +90,18 @@
       <div class="col-md-6">
         <!-- pilot mode/recording -->
         <form>
-            <label>(M)ode</label>
-            <select id="mode_select" class="form-control"  style="display: inline">
+            <select id="mode_select" style="display: none">
               <option value="user">(U)ser</option>
               <option value="local">Full (A)uto</option>
               <option value="local_angle">Auto (S)teer</option>
             </select>
-            <button type="button" id="record_button" class="btn btn-info" >
+            <button type="button" class="btn btn-success" onclick="$('#mode_select').val('local').trigger('change')">
+              Start
+            </button>
+            <button type="button" class="btn btn-danger" onclick="$('#mode_select').val('user').trigger('change')">
+              Stop
+            </button>
+            <button type="button" id="record_button" class="btn btn-info" style="display: none">
               Start (R)ecording
             </button>
         </form>
@@ -110,7 +115,7 @@
         <!-- surface display -->
         <div style="margin-top: 5px;">
             <label>Weather: </label>
-            <span id="surface_display" style="font-weight: bold; color: #337ab7;">Dry</span>
+            <span id="surface_display" style="font-weight: bold; color: #337ab7; text-transform: capitalize;">Dry</span>
         </div>
 
         <!-- circuit image display -->
@@ -167,7 +172,7 @@
         </div>
       </div> <!-- end video column -->
 
-      <div id="joystick-column"  class="col-md-6">
+      <div id="joystick-column"  class="col-md-6" style="display:none">
         <div style="text-align:center;color:rgb(255, 27, 65);display:inline-block">Note: physical game controller overrides web control.</div>
         <!-- virtual joystick -->
         <div id="joystick_outer" class="thumbnail">
@@ -236,9 +241,9 @@
             </div>
             
             <div id="ai_throttle_container" style="display: inline-block; width: 200px; margin-left: 10px; vertical-align: middle;">
-              <label for="ai_throttle_range" style="display: block; font-size: 12px; margin-bottom: 2px;">AI Throttle Multiplier: <span id="ai_throttle_value">0.0</span></label>
+              <label for="ai_throttle_range" style="display: block; font-size: 12px; margin-bottom: 2px;">AI Throttle Multiplier: <span id="ai_throttle_value">1.00</span></label>
               <input type="range" id="ai_throttle_range" class="form-control-range ai-throttle-range" 
-                     min="0" max="200" value="0" step="5" 
+                     min="0" max="200" value="100" step="5" 
                      style="width: 100%;" 
                      oninput="updateAiThrottleSlider(this)">
             </div>
