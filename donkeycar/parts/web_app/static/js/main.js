@@ -727,6 +727,10 @@ var driveHandler = new function() {
       // Keep AI multiplier fixed at 1.00 when entering full auto.
       if (mode === 'local') {
         state.aiThrottleMul = 1.0;
+
+        // Keep hidden slider/value in sync so UI and state match.
+        $('#ai_throttle_range').val(100);
+        $('#ai_throttle_value').text('1.00');
       }
       
       // Handle throttle control visibility based on drive mode
@@ -750,7 +754,11 @@ var driveHandler = new function() {
         $('#steer_limited_controls').css('display', 'none');
       }
       
-      postDrive(["drive_mode"])
+      if (mode === 'local') {
+        postDrive(["ai_throttle_update", "drive_mode"])
+      } else {
+        postDrive(["drive_mode"])
+      }
     };
 
     var toggleDriveMode = function() {
