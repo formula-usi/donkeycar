@@ -324,7 +324,7 @@
     
     // Calculate the percentage for the gradient
     const percentage = (slider.value - slider.min) / (slider.max - slider.min) * 100;
-    
+
     // Update the background gradient (WebKit browsers)
     slider.style.background = `linear-gradient(to right, #cc3333 0%, #cc3333 ${percentage}%, #ddd ${percentage}%, #ddd 100%)`;
   }

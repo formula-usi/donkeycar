@@ -23,7 +23,7 @@ var driveHandler = new function() {
         'throttleMode' : 'user',
         'straightThrottle' : 1.0,  // For steer_limited mode: throttle when going straight
         'steerThrottle' : 0.5,     // For steer_limited mode: throttle at full steering
-        'aiThrottleMul': 0.0,
+        'aiThrottleMul': 1.0,
         'circuit': 'Default',
         'surface': 'Dry',
         'circuit_icon': '/static/images/default_circuit.png',
@@ -723,6 +723,11 @@ var driveHandler = new function() {
 
     var updateDriveMode = function(mode){
       state.driveMode = mode;
+
+      // Keep AI multiplier fixed at 1.00 when entering full auto.
+      if (mode === 'local') {
+        state.aiThrottleMul = 1.0;
+      }
       
       // Handle throttle control visibility based on drive mode
       if (mode === 'user') {
