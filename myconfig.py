@@ -53,10 +53,10 @@ MODEL_TAKEOVER_THROTTLE_UNC_THRESHOLD = 0.45
 ####################################
 
 # DEFAULT_MODEL_TYPE = 'fastai_linear'
-MAX_EPOCHS = 250
-PRUNE_CNN = True                             # This will remove weights from your model to increase performance.
-LEARNING_RATE = 0.0007
-EARLY_STOP_PATIENCE = 15
-OPTIMIZER = "adam"
-BATCH_SIZE = 128
-TRANSFORMATIONS = ['CROP','TRAPEZE']
+# MAX_EPOCHS = 250
+# PRUNE_CNN = True                             # This will remove weights from your model to increase performance.
+# LEARNING_RATE = 0.0007
+# EARLY_STOP_PATIENCE = 15
+# OPTIMIZER = "adam"
+# BATCH_SIZE = 128
+# TRANSFORMATIONS = ['CROP','TRAPEZE']
