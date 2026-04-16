@@ -728,9 +728,13 @@ var driveHandler = new function() {
       if (mode === 'local') {
         state.aiThrottleMul = 1.0;
 
-        // Keep hidden slider/value in sync so UI and state match.
+        // Keep slider/value in sync so UI and state match.
         $('#ai_throttle_range').val(100);
         $('#ai_throttle_value').text('1.00');
+        const aiSlider = document.getElementById('ai_throttle_range');
+        if (aiSlider && typeof window.updateAiThrottleSlider === 'function') {
+          window.updateAiThrottleSlider(aiSlider);
+        }
       }
       
       // Handle throttle control visibility based on drive mode
