@@ -14,6 +14,8 @@ Options:
     --myconfig=filename     Specify myconfig file to use. 
                             [default: myconfig.py]
 """
+from pyexpat import model
+from turtle import mode
 from docopt import docopt
 
 #
@@ -36,11 +38,8 @@ from donkeycar.parts.behavior import BehaviorPart
 from donkeycar.parts.file_watcher import FileWatcher
 from donkeycar.parts.launch import AiLaunch
 from donkeycar.parts.cockpit_updater import CockpitUpdater
-from donkeycar.parts.speed_limiter import SpeedLimiter
+from donkeycar.parts.battery_reader import BatteryReader
 from donkeycar.parts.weather_applier import WeatherApplier
-from donkeycar.parts.surface_id_mapper import SurfaceIdMapper
-from donkeycar.parts.direction_estimator import DirectionEstimator
-from donkeycar.parts.model_takeover import ModelTakeover
 
 from donkeycar.parts.kinematics import NormalizeSteeringAngle, UnnormalizeSteeringAngle, TwoWheelSteeringThrottle
 from donkeycar.parts.kinematics import Unicycle, InverseUnicycle, UnicycleUnnormalizeAngularVelocity
@@ -52,7 +51,7 @@ from donkeycar.utils import *
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-logging.disable(logging.WARNING)
+
 
 def drive(cfg, model_path=None, use_joystick=False, model_type=None,
           camera_type='single', meta=[]):
@@ -275,6 +274,11 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
     #IMU
     add_imu(V, cfg)
 
+
+    # Use the FPV preview, which will show the cropped image output, or the full frame.
+    if cfg.USE_FPV:
+        V.add(WebFpv(), inputs=['cam/image_array'], threaded=True)
+
     def load_model(kl, model_path):
         start = time.time()
         print('loading model', model_path)
@@ -388,9 +392,6 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
                   outputs=['imu_array'])
 
             inputs = ['cam/image_array', 'imu_array']
-
-        elif "mw" in model_type:
-            inputs = ['cam/image_array', 'surface_id']
         else:
             inputs = ['cam/image_array']
 
@@ -401,8 +402,10 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
 
         if cfg.TRAIN_LOCALIZER:
             outputs.append("pilot/loc")
+
         if "unc" in model_type:
             outputs += ['pilot/angle_unc', 'pilot/throttle_unc']
+
         #
         # Add image transformations like crop or trapezoidal mask
         # so they get applied at inference time in autopilot mode.
@@ -419,16 +422,6 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
             inputs = ['cam/image_array_trans'] + inputs[1:]
 
         V.add(kl, inputs=inputs, outputs=outputs, run_condition='run_pilot')
-        # V.add(DirectionEstimator(),
-        #       inputs=['pilot/angle'],
-        #       outputs=['pilot/angle_multiplier'])
-        if cfg.MODEL_TAKEOVER and "unc" in model_type:
-            V.add(ModelTakeover(cfg.MODEL_TAKEOVER_ANGLE_UNC_THRESHOLD,
-                                cfg.MODEL_TAKEOVER_THROTTLE_UNC_THRESHOLD,
-                                cfg.MODEL_TAKEOVER_DEFAULT_THROTTLE),
-                  inputs=['pilot/angle', 'pilot/throttle', 'pilot/angle_unc', 'pilot/throttle_unc'],
-                  outputs=['pilot/angle', 'pilot/throttle'])
-
 
     #
     # stop at a stop sign
@@ -445,7 +438,6 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
         V.add(ThrottleFilter(), 
               inputs=['pilot/throttle'],
               outputs=['pilot/throttle'])
-
 
     #
     # to give the car a boost when starting ai mode in a race.
@@ -465,11 +457,23 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
     # based on the choice of user or autopilot drive mode
     #
 
-    # V.add(SpeedLimiter)
     V.add(DriveMode(cfg),
           inputs=['user/mode', 'user/angle', 'user/throttle',
                   'pilot/angle', 'pilot/throttle'],
           outputs=['steering', 'throttle'])
+
+    if getattr(cfg, 'BATTERY_MONITOR_ENABLED', False):
+        V.add(
+            BatteryReader(
+                poll_interval_s=cfg.BATTERY_POLL_SEC,
+                i2c_addr=cfg.BATTERY_INA219_ADDR,
+            ),
+            inputs=[],
+            outputs=['battery_voltage'],
+        )
+    else:
+        V.add(Lambda(lambda: None), inputs=[], outputs=['battery_voltage'])
+
     V.add(CockpitUpdater(socket_update_fn), inputs=['steering', 'throttle'], outputs=[])
     V.add(WeatherApplier(), inputs=['steering', 'throttle', 'surface'], outputs=['steering', 'throttle'])
 
@@ -504,8 +508,8 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
         inputs = ['cam/image_array', 'lidar/dist_array', 'user/angle', 'user/throttle', 'user/mode']
         types = ['image_array', 'nparray','float', 'float', 'str']
     else:
-        inputs=['cam/image_array','user/angle', 'user/throttle', 'user/mode', "surface_id"]
-        types=['image_array','float', 'float','str', 'int']
+        inputs=['cam/image_array','user/angle', 'user/throttle', 'user/mode']
+        types=['image_array','float', 'float','str']
 
     if cfg.HAVE_ODOM:
         inputs += ['enc/speed']
@@ -783,11 +787,9 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
     socket_update_fn = web_ctr.send_websocket_data
 
     V.add(web_ctr,
-        inputs=[input_image, 'tub/num_records', 'user/mode', 'recording'],
+        inputs=[input_image, 'tub/num_records', 'user/mode', 'recording', 'battery_voltage'],
         outputs=['user/steering', 'user/throttle', 'user/mode', 'recording', 'surface','web/buttons'],
         threaded=True)
-
-    V.add(SurfaceIdMapper(), inputs=['surface'], outputs=['surface_id'])
     if ctr == None:
         ctr = web_ctr
     for item in to_add:

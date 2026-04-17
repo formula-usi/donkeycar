@@ -24,12 +24,6 @@ CAMERA_VFLIP = True
 CAMERA_HFLIP = True
 
 ####################################
-# AI THROTTLE MULTIPLIER ###########
-####################################
-
-AI_THROTTLE_MULT = 0.0                       # Multiplier to scale throttle value for all output from NN models
-
-####################################
 # JOYSTICK #########################
 ####################################
 
@@ -50,19 +44,6 @@ BATTERY_MONITOR_ENABLED = True
 ####################################
 
 DEFAULT_MODEL_TYPE = 'fastai_linear_mw'
-MODEL_TAKEOVER = False
-MODEL_TAKEOVER_ANGLE_UNC_THRESHOLD = 0.45
-MODEL_TAKEOVER_THROTTLE_UNC_THRESHOLD = 0.45
-
-####################################
-# TRAINING #########################
-####################################
-
-# DEFAULT_MODEL_TYPE = 'fastai_linear'
-# MAX_EPOCHS = 250
-# PRUNE_CNN = True                             # This will remove weights from your model to increase performance.
-# LEARNING_RATE = 0.0007
-# EARLY_STOP_PATIENCE = 15
-# OPTIMIZER = "adam"
-# BATCH_SIZE = 128
-# TRANSFORMATIONS = ['CROP','TRAPEZE']
+# MODEL_TAKEOVER = False
+# MODEL_TAKEOVER_ANGLE_UNC_THRESHOLD = 0.45
+# MODEL_TAKEOVER_THROTTLE_UNC_THRESHOLD = 0.45

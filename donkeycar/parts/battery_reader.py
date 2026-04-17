@@ -4,11 +4,11 @@ import importlib
 
 logger = logging.getLogger(__name__)
 
-class ExternalBatteryReader:
+class BatteryReader:
     """Read battery bus voltage directly from INA219 sensor."""
 
     def __init__(self,
-                 poll_interval_s: float = 1.0,
+                 poll_interval_s: float = 10,
                  i2c_addr: int = 0x42) -> None:
         self.poll_interval_s = max(0.1, float(poll_interval_s))
         self.ina = None

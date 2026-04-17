@@ -186,13 +186,13 @@ class LocalWebController(tornado.web.Application):
         if self.loop is not None:
             self.loop.add_callback(lambda: self.update_wsclients(data))
 
-    def run_threaded(self, img_arr=None, num_records=0, mode=None, recording=None, custom_values=None, text_content=None):
+    def run_threaded(self, img_arr=None, num_records=0, mode=None, recording=None, battery_voltage=None, text_content=None):
         """
         :param img_arr: current camera image or None
         :param num_records: current number of data records
         :param mode: default user/mode
         :param recording: default recording mode
-        :param custom_values: custom values to display
+        :param battery_voltage: battery voltage to display
         :param text_content: text content to display
         """
         self.img_arr = img_arr
@@ -222,9 +222,9 @@ class LocalWebController(tornado.web.Application):
             if self.num_records % 10 == 0:
                 changes['num_records'] = self.num_records
 
-        # Send custom values if provided
-        if custom_values is not None:
-            changes['custom_values'] = custom_values
+        # Send battery voltage if provided
+        if battery_voltage is not None:
+            changes['battery_voltage'] = battery_voltage
 
         # Send text content if provided
         if text_content is not None:
@@ -239,14 +239,14 @@ class LocalWebController(tornado.web.Application):
         for button, pressed in buttons.items():
             if pressed:
                 self.buttons[button] = False
-        # if there were changes, or if we have custom data to send, then send to web client
-        if (changes or custom_values is not None or text_content is not None) and self.loop is not None:
+        # if there were changes, or if we have data to send, then send to web client
+        if (changes or battery_voltage is not None or text_content is not None) and self.loop is not None:
             self.loop.add_callback(lambda: self.update_wsclients(changes))
 
         return self.angle, self.throttle, self.mode, self.recording, self.surface, buttons
 
-    def run(self, img_arr=None, num_records=0, mode=None, recording=None, custom_values=None, text_content=None):
-        return self.run_threaded(img_arr, num_records, mode, recording, custom_values, text_content)
+    def run(self, img_arr=None, num_records=0, mode=None, recording=None, battery_voltage=None, text_content=None):
+        return self.run_threaded(img_arr, num_records, mode, recording, battery_voltage, text_content)
 
     def shutdown(self):
         pass

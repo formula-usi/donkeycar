@@ -157,6 +157,10 @@ WEB_INIT_MODE = "user"              # which control mode to start in. one of use
 #DRIVING
 AI_THROTTLE_MULT = 1.0              # this multiplier will scale every throttle value for all output from NN models
 
+# BATTERY MONITOR
+BATTERY_MONITOR_ENABLED = False
+BATTERY_POLL_SEC = 10
+BATTERY_INA219_ADDR = 0x42
 
 #DonkeyGym
 #Only on Ubuntu linux, you can use the simulator as a virtual donkey and

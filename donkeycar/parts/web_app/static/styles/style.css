@@ -196,6 +196,15 @@ nav {
 #ai_throttle_container,
 #circuit,
 #weather,
+#battery,
+#minimap {
+	margin-top: 0px !important;
+}
+
+#circuit {
+	margin-top: 20px !important;
+}
+
 #minimap {
 	margin-top: 15px !important;
 }

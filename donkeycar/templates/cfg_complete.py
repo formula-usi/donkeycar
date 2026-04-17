@@ -731,6 +731,11 @@ AI_LAUNCH_KEEP_ENABLED = False      # when False ( default) you will need to hit
 #Scale the output of the throttle of the ai pilot for all model types.
 AI_THROTTLE_MULT = 1.0              # this multiplier will scale every throttle value for all output from NN models
 
+# Battery Monitor
+BATTERY_MONITOR_ENABLED = False
+BATTERY_POLL_SEC = 10
+BATTERY_INA219_ADDR = 0x42
+
 #Path following
 PATH_FILENAME = "donkey_path.pkl"   # the path will be saved to this filename
 PATH_SCALE = 5.0                    # the path display will be scaled by this factor in the web page
