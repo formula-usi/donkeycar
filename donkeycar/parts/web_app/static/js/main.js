@@ -512,13 +512,13 @@ var driveHandler = new function() {
         if (state.custom_values.battery_voltage !== undefined) {
           const batteryDisplay = document.getElementById('battery_display');
           if (batteryDisplay) {
-            const voltage = state.custom_values.battery_voltage;
-            batteryDisplay.textContent = voltage.toFixed(1) + 'V';
-            
-            // Color coding for battery level
-            if (voltage > 12.0) {
+            const voltage = Number(state.custom_values.battery_voltage);
+            batteryDisplay.textContent = Number(voltage).toFixed(1) + 'V';
+
+            // Color coding for voltage input.
+            if (voltage > 7.4) {
               batteryDisplay.style.color = '#5cb85c'; // Green - good
-            } else if (voltage > 11.0) {
+            } else if (voltage > 7.0) {
               batteryDisplay.style.color = '#f0ad4e'; // Orange - warning
             } else {
               batteryDisplay.style.color = '#d9534f'; // Red - low

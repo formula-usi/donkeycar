@@ -40,6 +40,12 @@ JOYSTICK_MAX_THROTTLE = 1.0                  # Scalar multiplied with the thrott
 # JOYSTICK_STEERING_SCALE = 1.0              # Scalar multiplied with the steering value to have a less sensitve steering
 
 ####################################
+# BATTERY MONITOR ##################
+####################################
+
+BATTERY_MONITOR_ENABLED = True
+
+####################################
 # SELF-DRIVING #####################
 ####################################
 

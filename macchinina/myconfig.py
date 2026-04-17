@@ -24,12 +24,6 @@ CAMERA_VFLIP = True
 CAMERA_HFLIP = True
 
 ####################################
-# AI THROTTLE MULTIPLIER ###########
-####################################
-
-AI_THROTTLE_MULT = 0.0                       # Multiplier to scale throttle value for all output from NN models
-
-####################################
 # JOYSTICK #########################
 ####################################
 
@@ -38,6 +32,12 @@ USE_JOYSTICK_AS_DEFAULT = True               # When starting the manage.py it wi
 JOYSTICK_DEADZONE = 0.15                     # when non zero, this is the smallest throttle before recording triggered.
 JOYSTICK_MAX_THROTTLE = 1.0                  # Scalar multiplied with the throttle value to limit the maximum throttle
 # JOYSTICK_STEERING_SCALE = 1.0              # Scalar multiplied with the steering value to have a less sensitve steering
+
+####################################
+# BATTERY MONITOR ##################
+####################################
+
+BATTERY_MONITOR_ENABLED = True
 
 ####################################
 # SELF-DRIVING #####################
