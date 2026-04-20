@@ -153,12 +153,23 @@ button {
 	margin-right: 10px;
 }
 
-#control_modes,
-#joystick_outer,
+#joystick-column {
+	display: none !important;
+}
+
+body.manual-mode #joystick-column {
+	display: block !important;
+}
+
+#mode_select,
 #record_button,
 #button_bar,
-#mode_select,
+#joystick_outer,
 #vehicle_footer {
+	display: none !important;
+}
+
+#control_modes > div:nth-child(1), #control_modes > div:nth-child(1) > label {
 	display: none !important;
 }
 
@@ -173,10 +184,12 @@ nav {
 	padding-top: 10px !important;
 }
 
+label {
+	font-size: 16px !important;
+}
+
 #ai_throttle_container {
-	/* display: inline-block;  */
 	width: 200px;
-	/* vertical-align: middle; */
 }
 
 #ai_throttle_container label {
@@ -227,6 +240,10 @@ nav {
 	padding: 5px;
 	display: inline-block;
 	background-color: #f8f9fa;
+}
+
+body > div.container > div > div:nth-child(1) > div.thumbnail {
+	margin-top: 20px;
 }
 
 #circuit_image {

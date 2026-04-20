@@ -53,6 +53,9 @@ var driveHandler = new function () {
 
 
   this.load = function () {
+    const isManualMode = new URLSearchParams(window.location.search).has('manual');
+    document.body.classList.toggle('manual-mode', isManualMode);
+
     // Initialize state with server-side values if available
     if (window.serverState) {
       if (window.serverState.circuit !== undefined) state.circuit = window.serverState.circuit;
