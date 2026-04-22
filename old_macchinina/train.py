@@ -7,9 +7,11 @@ Usage:
     train.py [--tubs=tubs] (--model=<model>)
     [--type=(linear|inferred|tensorrt_linear|tflite_linear)]
     [--comment=<comment>]
+    [--transfer=<transfer>]
 
 Options:
     -h --help              Show this screen.
+    --transfer=<transfer>  Path to transfer learning model.
 """
 
 from docopt import docopt
@@ -23,8 +25,12 @@ def main():
     tubs = args['--tubs']
     model = args['--model']
     model_type = args['--type']
-    comment = args['--comment']
-    train(cfg, tubs, model, model_type, comment)
+    # comment = args['--comment']
+    transfer = args['--transfer']
+    if transfer is not None:
+        train(cfg, tubs, model, model_type, transfer = transfer)
+    else:
+        train(cfg, tubs, model, model_type)
 
 
 if __name__ == "__main__":

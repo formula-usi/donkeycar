@@ -14,8 +14,6 @@ Options:
     --myconfig=filename     Specify myconfig file to use. 
                             [default: myconfig.py]
 """
-from pyexpat import model
-from turtle import mode
 from docopt import docopt
 
 #
@@ -41,9 +39,6 @@ from donkeycar.parts.cockpit_updater import CockpitUpdater
 from donkeycar.parts.battery_reader import BatteryReader
 from donkeycar.parts.weather_applier import WeatherApplier
 
-from donkeycar.parts.kinematics import NormalizeSteeringAngle, UnnormalizeSteeringAngle, TwoWheelSteeringThrottle
-from donkeycar.parts.kinematics import Unicycle, InverseUnicycle, UnicycleUnnormalizeAngularVelocity
-from donkeycar.parts.kinematics import Bicycle, InverseBicycle, BicycleUnnormalizeAngularVelocity
 from donkeycar.parts.explode import ExplodeDict
 from donkeycar.parts.transform import Lambda
 from donkeycar.parts.pipe import Pipe
@@ -51,7 +46,7 @@ from donkeycar.utils import *
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
+logging.disable(logging.WARNING)
 
 def drive(cfg, model_path=None, use_joystick=False, model_type=None,
           camera_type='single', meta=[]):

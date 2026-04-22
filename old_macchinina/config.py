@@ -731,7 +731,7 @@ AI_LAUNCH_KEEP_ENABLED = False      # when False ( default) you will need to hit
 #Scale the output of the throttle of the ai pilot for all model types.
 AI_THROTTLE_MULT = 1.0              # this multiplier will scale every throttle value for all output from NN models
 
-# Battery Monitor
+# External battery monitor integration for web dashboard
 BATTERY_MONITOR_ENABLED = False
 BATTERY_POLL_SEC = 10
 BATTERY_INA219_ADDR = 0x42
@@ -769,11 +769,3 @@ FPS_DEBUG_INTERVAL = 10    # the interval in seconds for printing the frequency 
 # PI connection
 PI_USERNAME = "pi"
 PI_HOSTNAME = "donkeypi.local"
-
-
-# Model Takeover
-
-MODEL_TAKEOVER = False
-MODEL_TAKEOVER_ANGLE_UNC_THRESHOLD = 0.27
-MODEL_TAKEOVER_THROTTLE_UNC_THRESHOLD = 0.27
-MODEL_TAKEOVER_DEFAULT_THROTTLE = 0.2

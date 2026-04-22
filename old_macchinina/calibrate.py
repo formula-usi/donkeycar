@@ -16,7 +16,9 @@ from docopt import docopt
 
 import donkeycar as dk
 
-from donkeycar.parts.controller import LocalWebController
+#import parts
+from donkeycar.parts.controller import LocalWebController, \
+    JoystickController, WebFpv
 from donkeycar.parts.throttle_filter import ThrottleFilter
 from donkeycar.parts import pins
 from donkeycar.utils import *

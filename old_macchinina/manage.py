@@ -14,6 +14,8 @@ Options:
     --myconfig=filename     Specify myconfig file to use. 
                             [default: myconfig.py]
 """
+from pyexpat import model
+from turtle import mode
 from docopt import docopt
 
 #
@@ -36,9 +38,11 @@ from donkeycar.parts.behavior import BehaviorPart
 from donkeycar.parts.file_watcher import FileWatcher
 from donkeycar.parts.launch import AiLaunch
 from donkeycar.parts.cockpit_updater import CockpitUpdater
-from donkeycar.parts.battery_reader import BatteryReader
 from donkeycar.parts.weather_applier import WeatherApplier
 
+from donkeycar.parts.kinematics import NormalizeSteeringAngle, UnnormalizeSteeringAngle, TwoWheelSteeringThrottle
+from donkeycar.parts.kinematics import Unicycle, InverseUnicycle, UnicycleUnnormalizeAngularVelocity
+from donkeycar.parts.kinematics import Bicycle, InverseBicycle, BicycleUnnormalizeAngularVelocity
 from donkeycar.parts.explode import ExplodeDict
 from donkeycar.parts.transform import Lambda
 from donkeycar.parts.pipe import Pipe
@@ -46,7 +50,7 @@ from donkeycar.utils import *
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-logging.disable(logging.WARNING)
+
 
 def drive(cfg, model_path=None, use_joystick=False, model_type=None,
           camera_type='single', meta=[]):
@@ -452,23 +456,6 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
     # based on the choice of user or autopilot drive mode
     #
 
-    V.add(DriveMode(cfg),
-          inputs=['user/mode', 'user/angle', 'user/throttle',
-                  'pilot/angle', 'pilot/throttle'],
-          outputs=['steering', 'throttle'])
-
-    if getattr(cfg, 'BATTERY_MONITOR_ENABLED', False):
-        V.add(
-            BatteryReader(
-                poll_interval_s=cfg.BATTERY_POLL_SEC,
-                i2c_addr=cfg.BATTERY_INA219_ADDR,
-            ),
-            inputs=[],
-            outputs=['battery_voltage'],
-        )
-    else:
-        V.add(Lambda(lambda: None), inputs=[], outputs=['battery_voltage'])
-
     V.add(CockpitUpdater(socket_update_fn), inputs=['steering', 'throttle'], outputs=[])
     V.add(WeatherApplier(), inputs=['steering', 'throttle', 'surface'], outputs=['steering', 'throttle'])
 
@@ -782,7 +769,7 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
     socket_update_fn = web_ctr.send_websocket_data
 
     V.add(web_ctr,
-        inputs=[input_image, 'tub/num_records', 'user/mode', 'recording', 'battery_voltage'],
+        inputs=[input_image, 'tub/num_records', 'user/mode', 'recording'],
         outputs=['user/steering', 'user/throttle', 'user/mode', 'recording', 'surface','web/buttons'],
         threaded=True)
     if ctr == None:
