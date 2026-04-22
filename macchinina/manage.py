@@ -38,8 +38,6 @@ from donkeycar.parts.behavior import BehaviorPart
 from donkeycar.parts.file_watcher import FileWatcher
 from donkeycar.parts.launch import AiLaunch
 from donkeycar.parts.cockpit_updater import CockpitUpdater
-from donkeycar.parts.battery_external import ExternalBatteryReader
-from donkeycar.parts.speed_limiter import SpeedLimiter
 from donkeycar.parts.weather_applier import WeatherApplier
 
 from donkeycar.parts.kinematics import NormalizeSteeringAngle, UnnormalizeSteeringAngle, TwoWheelSteeringThrottle
@@ -458,36 +456,6 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
     # based on the choice of user or autopilot drive mode
     #
 
-    # V.add(SpeedLimiter)
-    V.add(DriveMode(cfg),
-          inputs=['user/mode', 'user/angle', 'user/throttle',
-                  'pilot/angle', 'pilot/throttle'],
-          outputs=['steering', 'throttle'])
-
-    if getattr(cfg, 'BATTERY_MONITOR_ENABLED', False):
-        V.add(
-            ExternalBatteryReader(
-                poll_interval_s=cfg.BATTERY_POLL_SEC,
-                i2c_addr=cfg.BATTERY_INA219_ADDR,
-            ),
-            inputs=[],
-            outputs=['battery_voltage'],
-        )
-    else:
-        V.add(Lambda(lambda: None), inputs=[], outputs=['battery_voltage'])
-
-    V.add(
-        Lambda(
-            lambda battery_voltage: (
-                {"battery_voltage": float(battery_voltage)}
-                if battery_voltage is not None
-                else None
-            )
-        ),
-        inputs=['battery_voltage'],
-        outputs=['web/custom_values'],
-    )
-
     V.add(CockpitUpdater(socket_update_fn), inputs=['steering', 'throttle'], outputs=[])
     V.add(WeatherApplier(), inputs=['steering', 'throttle', 'surface'], outputs=['steering', 'throttle'])
 
@@ -801,7 +769,7 @@ def add_user_controller(V, cfg, use_joystick, input_image='ui/image_array'):
     socket_update_fn = web_ctr.send_websocket_data
 
     V.add(web_ctr,
-        inputs=[input_image, 'tub/num_records', 'user/mode', 'recording', 'web/custom_values'],
+        inputs=[input_image, 'tub/num_records', 'user/mode', 'recording'],
         outputs=['user/steering', 'user/throttle', 'user/mode', 'recording', 'surface','web/buttons'],
         threaded=True)
     if ctr == None:
